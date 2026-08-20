@@ -11,11 +11,12 @@
 </head>
 <body>
 
+  <!-- Top bar -->
   <header class="topbar">
     <div class="topbar__mark">VI</div>
     <div class="topbar__title">
       <h1>Vendor Intelligence</h1>
-      <p class="eyebrow">Manifest Desk &mdash; Invoice, Freight &amp; RAG AI Review</p>
+      <p class="eyebrow">Manifest Desk &mdash; Invoice, Freight &amp; Batch AI Workspace</p>
     </div>
     <div class="topbar__status" id="apiStatus">
       <span class="dot" id="apiDot"></span>
@@ -23,135 +24,385 @@
     </div>
   </header>
 
-  <main class="desk">
+  <div class="app-container">
 
-    <!-- ================= INVOICE RISK PANEL ================= -->
-    <section class="ledger-card" id="invoiceCard">
-      <div class="ledger-card__head">
-        <span class="ledger-card__index">MANIFEST 01</span>
-        <h2>Invoice Risk Check</h2>
-        <p class="ledger-card__desc">Enter the invoice and matching purchase-order figures. The desk will weigh them against past manifests and stamp a verdict.</p>
-      </div>
+    <!-- Persistent Left Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar__section-label">Overview</div>
+      <nav class="sidebar__nav">
+        <a href="#dashboard" class="nav-link active" data-target="view-dashboard">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </a>
+      </nav>
 
-      <form id="invoiceForm" class="ledger-form">
-        <label class="field">
-          <span>Invoice quantity</span>
-          <input type="number" step="any" min="0" name="invoice_quantity" required placeholder="e.g. 6000">
-        </label>
-        <label class="field">
-          <span>Invoice dollars ($)</span>
-          <input type="number" step="any" min="0" name="invoice_dollars" required placeholder="e.g. 58000">
-        </label>
-        <label class="field">
-          <span>Freight ($)</span>
-          <input type="number" step="any" min="0" name="Freight" required placeholder="e.g. 300">
-        </label>
-        <label class="field">
-          <span>Total item quantity (PO)</span>
-          <input type="number" step="any" min="0" name="total_item_quantity" required placeholder="e.g. 6000">
-        </label>
-        <label class="field">
-          <span>Total item dollars (PO) ($)</span>
-          <input type="number" step="any" min="0" name="total_item_dollars" required placeholder="e.g. 58000">
-        </label>
+      <div class="sidebar__section-label">Invoice Risk</div>
+      <nav class="sidebar__nav">
+        <a href="#invoice-manual" class="nav-link" data-target="view-invoice-manual">
+          <span class="nav-icon">📝</span>
+          <span>Manual Entry</span>
+        </a>
+        <a href="#invoice-batch" class="nav-link" data-target="view-invoice-batch">
+          <span class="nav-icon">📁</span>
+          <span>Batch Upload</span>
+        </a>
+      </nav>
 
-        <button type="submit" class="btn btn--primary">
-          <span>Stamp this invoice</span>
-        </button>
-      </form>
+      <div class="sidebar__section-label">Freight Estimation</div>
+      <nav class="sidebar__nav">
+        <a href="#freight-manual" class="nav-link" data-target="view-freight-manual">
+          <span class="nav-icon">🚛</span>
+          <span>Manual Form</span>
+        </a>
+        <a href="#freight-batch" class="nav-link" data-target="view-freight-batch">
+          <span class="nav-icon">📦</span>
+          <span>Batch Upload</span>
+        </a>
+      </nav>
 
-      <div class="result-slot" id="invoiceResult" aria-live="polite"></div>
-    </section>
+      <div class="sidebar__section-label">Analytics &amp; Tools</div>
+      <nav class="sidebar__nav">
+        <a href="#history" class="nav-link" data-target="view-history">
+          <span class="nav-icon">📜</span>
+          <span>Unified History</span>
+        </a>
+        <a href="#batches" class="nav-link" data-target="view-batches">
+          <span class="nav-icon">🗂️</span>
+          <span>Upload Batches</span>
+        </a>
+        <a href="#assistant" class="nav-link" data-target="view-assistant">
+          <span class="nav-icon">🤖</span>
+          <span>AI Assistant</span>
+        </a>
+      </nav>
+    </aside>
 
-    <!-- ================= FREIGHT PANEL ================= -->
-    <section class="ledger-card" id="freightCard">
-      <div class="ledger-card__head">
-        <span class="ledger-card__index">MANIFEST 02</span>
-        <h2>Freight Cost Estimate</h2>
-        <p class="ledger-card__desc">Give the invoice dollar amount and the desk will project the expected freight charge from historical shipments.</p>
-      </div>
+    <!-- Main Workspace Area -->
+    <main class="app-main">
 
-      <form id="freightForm" class="ledger-form">
-        <label class="field">
-          <span>Invoice dollars ($)</span>
-          <input type="number" step="any" min="0" name="Dollars" required placeholder="e.g. 25000">
-        </label>
+      <!-- ================= 1. DASHBOARD VIEW ================= -->
+      <section class="page-view active" id="view-dashboard">
+        <div class="ledger-card ledger-card--full" style="margin-bottom: 24px;">
+          <div class="ledger-card__head">
+            <span class="ledger-card__index">SYSTEM OVERVIEW</span>
+            <h2>Desk Control Center</h2>
+            <p class="ledger-card__desc">Real-time statistics for invoice risk predictions, freight cost projections, and CSV batch processing pipelines.</p>
+          </div>
 
-        <button type="submit" class="btn btn--amber">
-          <span>Estimate freight</span>
-        </button>
-      </form>
+          <div class="dash-grid">
+            <div class="metric-card">
+              <span class="metric-card__title">Invoices Checked</span>
+              <span class="metric-card__value" id="dashTotalInvoices">0</span>
+              <span class="metric-card__sub" id="dashFlaggedRate">0% Flagged</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-card__title">Freight Predictions</span>
+              <span class="metric-card__value" id="dashTotalFreight">0</span>
+              <span class="metric-card__sub">Model Scored</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-card__title">Upload Batches</span>
+              <span class="metric-card__value" id="dashTotalBatches">0</span>
+              <span class="metric-card__sub" id="dashCompletedBatches">0 Completed</span>
+            </div>
+          </div>
 
-      <div class="result-slot" id="freightResult" aria-live="polite"></div>
-    </section>
-
-    <!-- ================= VENDOR AI ASSISTANT PANEL ================= -->
-    <section class="ledger-card ledger-card--full" id="assistantCard">
-      <div class="ledger-card__head">
-        <span class="ledger-card__index">MANIFEST 03</span>
-        <h2>Vendor AI Assistant</h2>
-        <p class="ledger-card__desc">Ask natural-language questions about vendor invoices, freight projections, or recent audit flags. Powered by a tool-calling agent.</p>
-      </div>
-
-      <form id="assistantForm" class="ledger-form assistant-form">
-        <label class="field field--full">
-          <span>Question / Prompt</span>
-          <input type="text" name="message" id="assistantInput" required placeholder="e.g. What is the estimated freight for a $45,000 invoice?" />
-        </label>
-
-        <div class="sample-chips">
-          <button type="button" class="chip" data-prompt="What is the estimated freight for a $50,000 order?">Freight for $50k</button>
-          <button type="button" class="chip" data-prompt="Check risk for invoice qty 6000, dollars 58000, freight 300, po qty 6000, po dollars 58000">Score invoice risk</button>
-          <button type="button" class="chip" data-prompt="Show recent flagged invoices">Recent flagged invoices</button>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <a href="#invoice-batch" class="btn btn--primary" style="text-decoration:none; display:inline-block; width:auto;">Upload Invoice CSV</a>
+            <a href="#freight-batch" class="btn btn--amber" style="text-decoration:none; display:inline-block; width:auto;">Upload Freight CSV</a>
+            <a href="#history" class="btn btn--ghost" style="text-decoration:none; display:inline-block; width:auto;">View History Ledger</a>
+          </div>
         </div>
+      </section>
 
-        <button type="submit" class="btn btn--primary">
-          <span>Ask Assistant</span>
-        </button>
-      </form>
+      <!-- ================= 2. INVOICE MANUAL VIEW ================= -->
+      <section class="page-view" id="view-invoice-manual">
+        <div class="ledger-card">
+          <div class="ledger-card__head">
+            <span class="ledger-card__index">MANIFEST 01 &middot; MANUAL</span>
+            <h2>Single Invoice Risk Check</h2>
+            <p class="ledger-card__desc">Enter invoice and matching purchase-order figures to evaluate fraud &amp; discrepancy risk.</p>
+          </div>
 
-      <div class="result-slot" id="assistantResult" aria-live="polite"></div>
-    </section>
+          <form id="invoiceForm" class="ledger-form">
+            <label class="field">
+              <span>Vendor Number</span>
+              <input type="text" name="vendor_number" placeholder="e.g. VND-1001">
+            </label>
+            <label class="field">
+              <span>PO Number</span>
+              <input type="text" name="po_number" placeholder="e.g. PO-5001">
+            </label>
+            <label class="field field--full">
+              <span>Invoice Date</span>
+              <input type="date" name="invoice_date" placeholder="YYYY-MM-DD">
+            </label>
 
-  </main>
+            <label class="field">
+              <span>Invoice quantity</span>
+              <input type="number" step="any" min="0" name="invoice_quantity" required placeholder="e.g. 6000">
+            </label>
+            <label class="field">
+              <span>Invoice dollars ($)</span>
+              <input type="number" step="any" min="0" name="invoice_dollars" required placeholder="e.g. 58000">
+            </label>
+            <label class="field">
+              <span>Freight ($)</span>
+              <input type="number" step="any" min="0" name="Freight" required placeholder="e.g. 300">
+            </label>
+            <label class="field">
+              <span>Total item quantity (PO)</span>
+              <input type="number" step="any" min="0" name="total_item_quantity" required placeholder="e.g. 6000">
+            </label>
+            <label class="field field--full">
+              <span>Total item dollars (PO) ($)</span>
+              <input type="number" step="any" min="0" name="total_item_dollars" required placeholder="e.g. 58000">
+            </label>
 
-  <!-- ================= HISTORY LEDGER ================= -->
-  <section class="history">
-    <div class="history__head">
-      <h2>Recent entries</h2>
-      <button id="refreshHistory" class="btn btn--ghost">Refresh</button>
-    </div>
+            <button type="submit" class="btn btn--primary">
+              <span>Stamp this invoice</span>
+            </button>
+          </form>
 
-    <div class="history__tables">
-      <div class="history__table-wrap">
-        <h3>Invoice checks</h3>
-        <table class="ledger-table" id="invoiceHistoryTable">
-          <thead>
-            <tr>
-              <th>#</th><th>Invoice $</th><th>Freight $</th><th>Verdict</th><th>Confidence</th><th>Audit RAG</th><th>Logged</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-        <p class="empty-note" id="invoiceHistoryEmpty">No invoices checked yet.</p>
-      </div>
+          <div class="result-slot" id="invoiceResult" aria-live="polite"></div>
+        </div>
+      </section>
 
-      <div class="history__table-wrap">
-        <h3>Freight estimates</h3>
-        <table class="ledger-table" id="freightHistoryTable">
-          <thead>
-            <tr>
-              <th>#</th><th>Invoice $</th><th>Predicted freight $</th><th>Logged</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-        <p class="empty-note" id="freightHistoryEmpty">No estimates yet.</p>
-      </div>
-    </div>
-  </section>
+      <!-- ================= 3. INVOICE BATCH VIEW ================= -->
+      <section class="page-view" id="view-invoice-batch">
+        <div class="ledger-card ledger-card--full">
+          <div class="ledger-card__head">
+            <span class="ledger-card__index">BATCH INGESTION</span>
+            <h2>Invoice Risk Batch Upload</h2>
+            <p class="ledger-card__desc">Upload a CSV file containing multiple invoice records. Large files (>500 rows) process asynchronously in the background.</p>
+          </div>
 
-  <!-- ================= AUDIT EXPLANATION MODAL ================= -->
+          <div class="batch-template-bar">
+            <span style="font-size: 0.85rem; color: var(--muted-text);">Standard Columns: <code>VendorNumber, PONumber, InvoiceDate, invoice_quantity, invoice_dollars, Freight</code></span>
+            <a href="/api/batches/sample-template/invoice" download class="btn btn--ghost btn--sm">⬇️ Download CSV Template</a>
+          </div>
+
+          <div class="dropzone" id="invoiceDropzone">
+            <div class="dropzone__icon">📄</div>
+            <h3 class="dropzone__title">Drag &amp; drop invoice CSV file here</h3>
+            <p class="dropzone__sub">or click to browse your computer (Max 10MB)</p>
+            <input type="file" id="invoiceFileInput" accept=".csv" />
+          </div>
+
+          <div id="invoiceBatchProgress" class="progress-wrap" hidden>
+            <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:0.82rem;">
+              <span id="invoiceBatchStatusText">Uploading &amp; validating CSV…</span>
+              <span id="invoiceBatchUuidText"></span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" id="invoiceProgressBarFill"></div>
+            </div>
+          </div>
+
+          <div class="result-slot" id="invoiceBatchResult"></div>
+        </div>
+      </section>
+
+      <!-- ================= 4. FREIGHT MANUAL VIEW ================= -->
+      <section class="page-view" id="view-freight-manual">
+        <div class="ledger-card">
+          <div class="ledger-card__head">
+            <span class="ledger-card__index">MANIFEST 02 &middot; MANUAL</span>
+            <h2>Freight Cost Estimate</h2>
+            <p class="ledger-card__desc">Enter invoice dollar amount to project expected freight cost from historical model regressions.</p>
+          </div>
+
+          <form id="freightForm" class="ledger-form">
+            <label class="field">
+              <span>Vendor Number</span>
+              <input type="text" name="vendor_number" placeholder="e.g. VND-1001">
+            </label>
+            <label class="field">
+              <span>PO Number</span>
+              <input type="text" name="po_number" placeholder="e.g. PO-5001">
+            </label>
+            <label class="field field--full">
+              <span>Invoice Date</span>
+              <input type="date" name="invoice_date">
+            </label>
+
+            <label class="field field--full">
+              <span>Invoice dollars ($)</span>
+              <input type="number" step="any" min="0" name="Dollars" required placeholder="e.g. 25000">
+            </label>
+
+            <button type="submit" class="btn btn--amber">
+              <span>Estimate freight</span>
+            </button>
+          </form>
+
+          <div class="result-slot" id="freightResult" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- ================= 5. FREIGHT BATCH VIEW ================= -->
+      <section class="page-view" id="view-freight-batch">
+        <div class="ledger-card ledger-card--full">
+          <div class="ledger-card__head">
+            <span class="ledger-card__index">BATCH INGESTION</span>
+            <h2>Freight Estimation Batch Upload</h2>
+            <p class="ledger-card__desc">Upload a CSV file with invoice dollar amounts to compute bulk freight estimates.</p>
+          </div>
+
+          <div class="batch-template-bar">
+            <span style="font-size: 0.85rem; color: var(--muted-text);">Standard Columns: <code>VendorNumber, PONumber, InvoiceDate, Dollars</code></span>
+            <a href="/api/batches/sample-template/freight" download class="btn btn--ghost btn--sm">⬇️ Download CSV Template</a>
+          </div>
+
+          <div class="dropzone" id="freightDropzone">
+            <div class="dropzone__icon">📦</div>
+            <h3 class="dropzone__title">Drag &amp; drop freight CSV file here</h3>
+            <p class="dropzone__sub">or click to browse your computer (Max 10MB)</p>
+            <input type="file" id="freightFileInput" accept=".csv" />
+          </div>
+
+          <div id="freightBatchProgress" class="progress-wrap" hidden>
+            <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:0.82rem;">
+              <span id="freightBatchStatusText">Uploading &amp; validating CSV…</span>
+              <span id="freightBatchUuidText"></span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" id="freightProgressBarFill"></div>
+            </div>
+          </div>
+
+          <div class="result-slot" id="freightBatchResult"></div>
+        </div>
+      </section>
+
+      <!-- ================= 6. HISTORY UNIFIED VIEW ================= -->
+      <section class="page-view" id="view-history">
+        <div class="history" style="padding: 0; max-width: 100%;">
+          <div class="history__head">
+            <h2>Unified Predictions History</h2>
+            <button id="refreshHistory" class="btn btn--ghost btn--sm">Refresh Ledger</button>
+          </div>
+
+          <!-- Filters Bar -->
+          <div class="filters-bar">
+            <div class="filter-group">
+              <label for="historySourceFilter">Source:</label>
+              <select id="historySourceFilter">
+                <option value="">ALL</option>
+                <option value="MANUAL">MANUAL</option>
+                <option value="BATCH">BATCH</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label for="historyFlaggedFilter">
+                <input type="checkbox" id="historyFlaggedFilter" /> Flagged Only
+              </label>
+            </div>
+
+            <div class="filter-group">
+              <label for="historyBatchFilter">Batch UUID:</label>
+              <input type="text" id="historyBatchFilter" placeholder="Filter by UUID..." style="width: 220px;" />
+            </div>
+
+            <button type="button" id="clearHistoryFilters" class="btn btn--ghost btn--sm">Reset Filters</button>
+          </div>
+
+          <div class="history__tables">
+            <div class="history__table-wrap">
+              <h3>Invoice Risk Checks</h3>
+              <table class="ledger-table" id="invoiceHistoryTable">
+                <thead>
+                  <tr>
+                    <th>#</th><th>Vendor / PO / Date</th><th>Invoice $</th><th>Freight $</th><th>Source</th><th>Verdict</th><th>Confidence</th><th>Audit RAG</th><th>Logged</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+              <p class="empty-note" id="invoiceHistoryEmpty">No invoices found matching criteria.</p>
+            </div>
+
+            <div class="history__table-wrap">
+              <h3>Freight Cost Estimates</h3>
+              <table class="ledger-table" id="freightHistoryTable">
+                <thead>
+                  <tr>
+                    <th>#</th><th>Vendor / PO / Date</th><th>Invoice $</th><th>Predicted Freight</th><th>Source</th><th>Logged</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+              <p class="empty-note" id="freightHistoryEmpty">No freight estimates found matching criteria.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 7. BATCHES VIEW ================= -->
+      <section class="page-view" id="view-batches">
+        <div class="ledger-card ledger-card--full">
+          <div class="ledger-card__head">
+            <span class="ledger-card__index">BATCH REGISTRY</span>
+            <h2>CSV Upload Batches</h2>
+            <p class="ledger-card__desc">Review execution history, success rates, duplicate counts, and detailed row errors for all CSV batch uploads.</p>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="ledger-table" id="batchesTable">
+              <thead>
+                <tr>
+                  <th>UUID / Type</th>
+                  <th>Filename</th>
+                  <th>Total Rows</th>
+                  <th>Success</th>
+                  <th>Duplicates</th>
+                  <th>Errors</th>
+                  <th>Status</th>
+                  <th>Uploaded</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <p class="empty-note" id="batchesEmpty">No batch uploads recorded yet.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 8. ASSISTANT VIEW ================= -->
+      <section class="page-view" id="view-assistant">
+        <div class="ledger-card ledger-card--full" id="assistantCard">
+          <div class="ledger-card__head">
+            <span class="ledger-card__index">MANIFEST 03 &middot; AI AGENT</span>
+            <h2>Vendor AI Assistant</h2>
+            <p class="ledger-card__desc">Ask natural-language questions about vendor invoices, freight projections, or recent audit flags. Powered by a tool-calling agent.</p>
+          </div>
+
+          <form id="assistantForm" class="ledger-form assistant-form">
+            <label class="field field--full">
+              <span>Question / Prompt</span>
+              <input type="text" name="message" id="assistantInput" required placeholder="e.g. What is the estimated freight for a $45,000 invoice?" />
+            </label>
+
+            <div class="sample-chips">
+              <button type="button" class="chip" data-prompt="What is the estimated freight for a $50,000 order?">Freight for $50k</button>
+              <button type="button" class="chip" data-prompt="Check risk for invoice qty 6000, dollars 58000, freight 300, po qty 6000, po dollars 58000">Score invoice risk</button>
+              <button type="button" class="chip" data-prompt="Show recent flagged invoices">Recent flagged invoices</button>
+            </div>
+
+            <button type="submit" class="btn btn--primary">
+              <span>Ask Assistant</span>
+            </button>
+          </form>
+
+          <div class="result-slot" id="assistantResult" aria-live="polite"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- AUDIT EXPLANATION MODAL -->
   <div class="modal-backdrop" id="explainModal" hidden>
     <div class="modal-dialog">
       <div class="modal-head">
@@ -165,8 +416,34 @@
     </div>
   </div>
 
+  <!-- BATCH ROW ERRORS DETAIL MODAL -->
+  <div class="modal-backdrop" id="batchErrorsModal" hidden>
+    <div class="modal-dialog" style="max-width: 800px;">
+      <div class="modal-head">
+        <span class="modal-badge">DIAGNOSTIC LOG</span>
+        <h2 id="batchErrorsModalTitle">Batch Row Errors</h2>
+        <button type="button" class="modal-close" id="closeBatchErrorsModal" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="overflow-x: auto;">
+          <table class="ledger-table" id="batchErrorsTable">
+            <thead>
+              <tr>
+                <th>Row #</th>
+                <th>Error Message</th>
+                <th>Raw CSV Row Data</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <p class="empty-note" id="batchErrorsEmpty">No row errors recorded for this batch.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <footer class="foot">
-    <p>Vendor Intelligence &middot; internal desk tool &middot; models retrained by the data team</p>
+    <p>Vendor Intelligence &middot; internal desk workspace &middot; models retrained by the data team</p>
   </footer>
 
 <script src="js/app.js"></script>
