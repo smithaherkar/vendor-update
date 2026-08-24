@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-grad-3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <filter id="shadow3" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <rect width="1000" height="540" rx="16" fill="url(#bg-grad-3)" />
+  <rect x="2" y="2" width="996" height="536" rx="14" fill="none" stroke="#334155" stroke-width="1.5"/>
+
+  <!-- Title -->
+  <g transform="translate(40, 35)">
+    <text x="0" y="20" fill="#f8fafc" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="20">Vendor Intelligence — Database Entity-Relationship Diagram (ERD)</text>
+    <text x="0" y="38" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="12">PostgreSQL &amp; SQLite relational schema mapping all predictions, batch jobs, errors &amp; catalog lookups</text>
+  </g>
+
+  <!-- TABLE 1: upload_batches -->
+  <g transform="translate(40, 95)" filter="url(#shadow3)">
+    <rect width="270" height="230" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+    <rect width="270" height="32" rx="10" fill="#0284c7"/>
+    <rect y="22" width="270" height="10" fill="#0284c7"/>
+    <text x="15" y="22" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="13">upload_batches</text>
+    
+    <text x="15" y="52" fill="#f59e0b" font-family="monospace" font-weight="bold" font-size="11">PK  id : Integer</text>
+    <text x="15" y="72" fill="#cbd5e1" font-family="monospace" font-size="11">UQ  batch_uuid : String(36)</text>
+    <text x="15" y="92" fill="#cbd5e1" font-family="monospace" font-size="11">    batch_type : String(20)</text>
+    <text x="15" y="112" fill="#cbd5e1" font-family="monospace" font-size="11">    filename : String(255)</text>
+    <text x="15" y="132" fill="#cbd5e1" font-family="monospace" font-size="11">UQ  file_hash : String(64)</text>
+    <text x="15" y="152" fill="#cbd5e1" font-family="monospace" font-size="11">    row_count : Integer</text>
+    <text x="15" y="172" fill="#cbd5e1" font-family="monospace" font-size="11">    success_count : Integer</text>
+    <text x="15" y="192" fill="#cbd5e1" font-family="monospace" font-size="11">    duplicate_count : Integer</text>
+    <text x="15" y="212" fill="#cbd5e1" font-family="monospace" font-size="11">    status : String(30)</text>
+  </g>
+
+  <!-- TABLE 2: batch_row_errors -->
+  <g transform="translate(40, 355)" filter="url(#shadow3)">
+    <rect width="270" height="150" rx="10" fill="#1e293b" stroke="#ef4444" stroke-width="1.5"/>
+    <rect width="270" height="32" rx="10" fill="#dc2626"/>
+    <rect y="22" width="270" height="10" fill="#dc2626"/>
+    <text x="15" y="22" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="13">batch_row_errors</text>
+    
+    <text x="15" y="52" fill="#f59e0b" font-family="monospace" font-weight="bold" font-size="11">PK  id : Integer</text>
+    <text x="15" y="72" fill="#60a5fa" font-family="monospace" font-weight="bold" font-size="11">FK  batch_id : Integer</text>
+    <text x="15" y="92" fill="#cbd5e1" font-family="monospace" font-size="11">    row_number : Integer</text>
+    <text x="15" y="112" fill="#cbd5e1" font-family="monospace" font-size="11">    raw_row_json : Text</text>
+    <text x="15" y="132" fill="#cbd5e1" font-family="monospace" font-size="11">    error_message : Text</text>
+  </g>
+
+  <!-- Relationship: upload_batches 1 -> N batch_row_errors -->
+  <path d="M 175 325 L 175 355" stroke="#ef4444" stroke-width="2" stroke-dasharray="4 4"/>
+  <circle cx="175" cy="325" r="4" fill="#ef4444"/>
+  <text x="185" y="343" fill="#ef4444" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="bold">1 : N (Cascade)</text>
+
+  <!-- TABLE 3: invoice_predictions -->
+  <g transform="translate(365, 95)" filter="url(#shadow3)">
+    <rect width="280" height="260" rx="10" fill="#1e293b" stroke="#6366f1" stroke-width="1.5"/>
+    <rect width="280" height="32" rx="10" fill="#4f46e5"/>
+    <rect y="22" width="280" height="10" fill="#4f46e5"/>
+    <text x="15" y="22" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="13">invoice_predictions</text>
+    
+    <text x="15" y="52" fill="#f59e0b" font-family="monospace" font-weight="bold" font-size="11">PK  id : Integer</text>
+    <text x="15" y="72" fill="#60a5fa" font-family="monospace" font-weight="bold" font-size="11">FK  batch_id : Integer (Nullable)</text>
+    <text x="15" y="92" fill="#cbd5e1" font-family="monospace" font-size="11">    vendor_number : String(50)</text>
+    <text x="15" y="112" fill="#cbd5e1" font-family="monospace" font-size="11">    po_number : String(50)</text>
+    <text x="15" y="132" fill="#cbd5e1" font-family="monospace" font-size="11">    invoice_date : String(10)</text>
+    <text x="15" y="152" fill="#cbd5e1" font-family="monospace" font-size="11">    invoice_quantity : Float</text>
+    <text x="15" y="172" fill="#cbd5e1" font-family="monospace" font-size="11">    invoice_dollars : Float</text>
+    <text x="15" y="192" fill="#34d399" font-family="monospace" font-weight="bold" font-size="11">    predicted_flag : Integer (0/1)</text>
+    <text x="15" y="212" fill="#34d399" font-family="monospace" font-weight="bold" font-size="11">    risk_probability : Float</text>
+    <text x="15" y="232" fill="#cbd5e1" font-family="monospace" font-size="11">    source : String (MANUAL/BATCH)</text>
+  </g>
+
+  <!-- Relationship: upload_batches 1 -> N invoice_predictions -->
+  <path d="M 310 200 L 365 200" stroke="#818cf8" stroke-width="2" stroke-dasharray="4 4"/>
+  <circle cx="310" cy="200" r="4" fill="#818cf8"/>
+  <text x="320" y="193" fill="#818cf8" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="bold">1 : N</text>
+
+  <!-- TABLE 4: freight_predictions -->
+  <g transform="translate(680, 95)" filter="url(#shadow3)">
+    <rect width="280" height="220" rx="10" fill="#1e293b" stroke="#10b981" stroke-width="1.5"/>
+    <rect width="280" height="32" rx="10" fill="#059669"/>
+    <rect y="22" width="280" height="10" fill="#059669"/>
+    <text x="15" y="22" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="13">freight_predictions</text>
+    
+    <text x="15" y="52" fill="#f59e0b" font-family="monospace" font-weight="bold" font-size="11">PK  id : Integer</text>
+    <text x="15" y="72" fill="#60a5fa" font-family="monospace" font-weight="bold" font-size="11">FK  batch_id : Integer (Nullable)</text>
+    <text x="15" y="92" fill="#cbd5e1" font-family="monospace" font-size="11">    vendor_number : String(50)</text>
+    <text x="15" y="112" fill="#cbd5e1" font-family="monospace" font-size="11">    po_number : String(50)</text>
+    <text x="15" y="132" fill="#cbd5e1" font-family="monospace" font-size="11">    invoice_date : String(10)</text>
+    <text x="15" y="152" fill="#cbd5e1" font-family="monospace" font-size="11">    dollars : Float</text>
+    <text x="15" y="172" fill="#34d399" font-family="monospace" font-weight="bold" font-size="11">    predicted_freight : Float</text>
+    <text x="15" y="192" fill="#cbd5e1" font-family="monospace" font-size="11">    source : String (MANUAL/BATCH)</text>
+  </g>
+
+  <!-- TABLE 5: purchases -->
+  <g transform="translate(480, 375)" filter="url(#shadow3)">
+    <rect width="480" height="130" rx="10" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5"/>
+    <rect width="480" height="32" rx="10" fill="#d97706"/>
+    <rect y="22" width="480" height="10" fill="#d97706"/>
+    <text x="15" y="22" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="13">purchases (PO Lookup Catalog Table)</text>
+    
+    <text x="15" y="52" fill="#f59e0b" font-family="monospace" font-weight="bold" font-size="11">PK  id : Integer</text>
+    <text x="15" y="72" fill="#cbd5e1" font-family="monospace" font-size="11">UQ  vendor_number + po_number : Unique Constraint</text>
+    <text x="15" y="92" fill="#cbd5e1" font-family="monospace" font-size="11">    total_item_quantity : Float  |  total_item_dollars : Float</text>
+    <text x="15" y="112" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="11">Used during CSV batch upload to automatically join PO totals if missing</text>
+  </g>
+</svg>

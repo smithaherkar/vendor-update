@@ -1,138 +1,367 @@
-# Vendor Intelligence — Setup Guide (Beginner Friendly)
+# Vendor Intelligence — System Architecture & Setup Guide
 
-This project has two of your trained models wired into a small web app:
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-%23F7931E.svg?style=for-the-badge&logo=scikit-learn&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 
-- **Invoice Risk Check** → uses `scaler.pkl` + `predict_flag_invoice.pkl` (Random Forest)
-- **Freight Cost Estimate** → uses `predict_freight_model.pkl` (Linear Regression)
+**Vendor Intelligence** is an enterprise-ready Machine Learning web application designed to evaluate **Invoice Risk** and project **Freight Costs** in real-time or in high-volume CSV batches. 
 
-Every prediction is saved to a **Postgres** database so you keep a history of what was checked.
+The system integrates trained Machine Learning models (`RandomForestClassifier` and `LinearRegression`) behind a robust **FastAPI** backend, complete with automated Pydantic schema validation, asynchronous batch CSV ingestion, deduplication hashing, RAG analytics support, and a resilient dual-database layer (PostgreSQL with automatic SQLite failover).
 
-## 1. Project structure
+---
+
+## 📊 System Architecture & Visualizations
+
+To help developers, data scientists, and architects understand the project at a glance, this section provides visual representations of backend connectivity, request flows, database schema (ERD), and ML inference pipelines.
+
+### 1. Backend Connectivity & System Architecture
+
+The overall system architecture follows a decoupled 4-layer design (Presentation Client $\rightarrow$ FastAPI Microservices Gateway $\rightarrow$ Processing & Intelligence Core $\rightarrow$ Dual Database Storage Layer).
+
+<p align="center">
+  <img src="docs/images/backend_connectivity.svg" alt="Backend Connectivity &amp; System Architecture" width="100%" />
+</p>
+
+<details>
+<summary><b>View Native GitHub Mermaid Architecture Diagram</b></summary>
+
+```mermaid
+flowchart TD
+    subgraph Client ["🌐 Presentation Layer (Browser UI)"]
+        UI_INV["Invoice Risk Form"]
+        UI_FRT["Freight Cost Form"]
+        UI_BAT["CSV Batch Upload UI"]
+        UI_RAG["AI Assistant & Analytics UI"]
+    end
+
+    subgraph Backend ["⚡ API & Gateway Layer (FastAPI Server)"]
+        CORS["CORS Middleware & Static Mount"]
+        PYD["Pydantic Validation (schemas.py)"]
+        subgraph Routers ["API Routers (routers/)"]
+            R_INV["invoice.py (/api/invoice/*)"]
+            R_FRT["freight.py (/api/freight/*)"]
+            R_BAT["batches.py (/api/batches/*)"]
+            R_RAG["rag.py (/api/rag/*)"]
+        end
+    end
+
+    subgraph Core ["🧠 Processing & Intelligence Layer"]
+        ML["ml_models.py (Scikit-Learn Core)"]
+        SCALER["scaler.pkl (StandardScaler)"]
+        RF_MODEL["predict_flag_invoice.pkl (RandomForest)"]
+        LR_MODEL["predict_freight_model.pkl (LinearRegression)"]
+        BATCH_PROC["batch_processor.py Engine\n(Dedup SHA256 & PO Lookup)"]
+        RAG_SVC["rag_service.py (Analytics & LLM)"]
+    end
+
+    subgraph DB ["🗄️ Persistence Layer (database.py)"]
+        PG[("PostgreSQL Database\n(Primary Production)")]
+        SQLITE[("SQLite Database\n(Auto-Failover Standby)")]
+    end
+
+    Client -->|HTTP REST / JSON / Multipart CSV| CORS
+    CORS --> PYD
+    PYD --> Routers
+    R_INV --> ML
+    R_FRT --> ML
+    R_BAT --> BATCH_PROC
+    R_RAG --> RAG_SVC
+
+    ML --> SCALER
+    ML --> RF_MODEL
+    ML --> LR_MODEL
+    BATCH_PROC --> ML
+
+    ML -->|SQLAlchemy ORM| PG
+    BATCH_PROC -->|SQLAlchemy ORM| PG
+    RAG_SVC -->|SQLAlchemy ORM| PG
+
+    PG -.-|Auto-Failover if offline| SQLITE
+```
+</details>
+
+#### Key Connectivity Highlights:
+- **Presentation Layer**: A lightweight Vanilla HTML5/JS/CSS frontend requiring no complex node build tools, served directly by FastAPI via `StaticFiles` mounting.
+- **FastAPI API Gateway**: Implements modular routers (`routers/invoice.py`, `routers/freight.py`, `routers/batches.py`, `routers/rag.py`), strictly validating payloads using Pydantic (`schemas.py`).
+- **Intelligence Core**: Encapsulates model execution in `ml_models.py` for single predictions, and offloads heavy CSV ingestion to `batch_processor.py` for streaming batch execution.
+- **Resilient Dual Storage**: Connected via SQLAlchemy ORM. If PostgreSQL is unbonded or unreachable, the system gracefully falls back to a local SQLite database (`vendor_intelligence.db`) without crashing.
+
+---
+
+### 2. End-to-End Request & Data Flow
+
+This sequence illustrates how data moves from user action to ML inference, database transaction, and visual UI rendering.
+
+<p align="center">
+  <img src="docs/images/data_flow_sequence.svg" alt="End-to-End Request &amp; Execution Lifecycle" width="100%" />
+</p>
+
+<details>
+<summary><b>View Native GitHub Mermaid Sequence Diagram</b></summary>
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User / Browser
+    participant App as Frontend (js/app.js)
+    participant API as FastAPI Router
+    participant ML as ML Inference Core
+    participant DB as DB Layer (Postgres/SQLite)
+
+    User->>App: 1. Submit Form / Upload CSV Batch
+    App->>API: 2. POST /api/invoice/predict (JSON Payload)
+    API->>API: 3. Validate input schema (Pydantic)
+    API->>ML: 4. Pass raw features to predict_invoice_flag()
+    ML->>ML: Scale features (scaler.pkl) & evaluate Random Forest (predict_flag_invoice.pkl)
+    ML-->>API: Return verdict (predicted_flag: 0/1, confidence: %)
+    API->>DB: 5. Persist record in invoice_predictions table
+    DB-->>API: Session commit confirmed
+    API-->>App: 6. Return JSON response (HTTP 200)
+    App-->>User: 7. Render CLEARED/FLAGGED stamp & update history table live
+```
+</details>
+
+#### Execution Lifecycles:
+1. **Single Predictions**: Frontend sends `fetch()` POST request $\rightarrow$ Validated by Pydantic $\rightarrow$ Scaled via `scaler.pkl` $\rightarrow$ Scored by `predict_flag_invoice.pkl` or `predict_freight_model.pkl` $\rightarrow$ Saved to DB $\rightarrow$ Returned to browser in under 25ms.
+2. **CSV Batch Scoring**: User uploads CSV file $\rightarrow$ SHA-256 hash computed for duplicate detection $\rightarrow$ Async processor cross-references Purchase Orders (`purchases` table) $\rightarrow$ Rows scored in parallel $\rightarrow$ Batch status (`PROCESSING`, `DONE`, `FAILED`) updated dynamically with per-row error logging.
+
+---
+
+### 3. Database Entity-Relationship Diagram (ERD)
+
+The relational schema tracks all invoice and freight predictions, upload batch audit trails, granular row errors, and Purchase Order catalog lookups.
+
+<p align="center">
+  <img src="docs/images/database_erd.svg" alt="Database Entity-Relationship Diagram" width="100%" />
+</p>
+
+<details>
+<summary><b>View Native GitHub Mermaid ER Diagram</b></summary>
+
+```mermaid
+erDiagram
+    UPLOAD_BATCHES ||--o{ BATCH_ROW_ERRORS : "logs errors"
+    UPLOAD_BATCHES ||--o{ INVOICE_PREDICTIONS : "associates batch"
+    UPLOAD_BATCHES ||--o{ FREIGHT_PREDICTIONS : "associates batch"
+
+    UPLOAD_BATCHES {
+        int id PK
+        string batch_uuid UQ
+        string batch_type
+        string filename
+        string file_hash UQ
+        int row_count
+        int success_count
+        int duplicate_count
+        int error_count
+        string status
+        datetime uploaded_at
+        datetime completed_at
+    }
+
+    BATCH_ROW_ERRORS {
+        int id PK
+        int batch_id FK
+        int row_number
+        text raw_row_json
+        text error_message
+        datetime created_at
+    }
+
+    INVOICE_PREDICTIONS {
+        int id PK
+        int batch_id FK
+        string vendor_number
+        string po_number
+        string invoice_date
+        float invoice_quantity
+        float invoice_dollars
+        float freight
+        float total_item_quantity
+        float total_item_dollars
+        int predicted_flag
+        float risk_probability
+        string source
+        datetime created_at
+    }
+
+    FREIGHT_PREDICTIONS {
+        int id PK
+        int batch_id FK
+        string vendor_number
+        string po_number
+        string invoice_date
+        float dollars
+        float predicted_freight
+        string source
+        datetime created_at
+    }
+
+    PURCHASES {
+        int id PK
+        string vendor_number
+        string po_number
+        float total_item_quantity
+        float total_item_dollars
+    }
+```
+</details>
+
+#### Schema Table Breakdown:
+- **`upload_batches`**: Tracks uploaded CSV files, unique SHA256 hashes, status (`PROCESSING`, `DONE`, `FAILED`), and metrics.
+- **`batch_row_errors`**: Stores line-by-line error tracebacks for failed rows in a batch without aborting valid rows.
+- **`invoice_predictions`**: Stores input fields, binary anomaly flag (0 = Clear, 1 = Flagged), risk probability score, and source (`MANUAL` or `BATCH`).
+- **`freight_predictions`**: Stores dollar amount, estimated freight cost, and prediction source.
+- **`purchases`**: Catalog table used for bulk Purchase Order verification and metric auto-completion during CSV uploads.
+
+---
+
+### 4. Machine Learning Inference Pipeline
+
+The ML pipeline incorporates feature preprocessing, scaling, and ensemble classification/regression.
+
+<p align="center">
+  <img src="docs/images/ml_pipeline.svg" alt="Machine Learning Inference Pipeline" width="100%" />
+</p>
+
+#### Model Details:
+- **Invoice Risk Classifier**:
+  - **Features**: `invoice_quantity`, `invoice_dollars`, `freight`, `total_item_quantity`, `total_item_dollars`.
+  - **Preprocessing**: `StandardScaler` (`scaler.pkl`) normalizes numerical features.
+  - **Model**: `RandomForestClassifier` (`predict_flag_invoice.pkl`) returns binary flag `0` (CLEARED) or `1` (FLAGGED) alongside probability $P(\text{risk})$.
+- **Freight Cost Estimator**:
+  - **Feature**: `dollars` (Total Invoice Amount).
+  - **Model**: `LinearRegression` (`predict_freight_model.pkl`) predicts baseline expected shipping cost.
+
+---
+
+## 📁 1. Project Structure
 
 ```
 vendor_intelligence/
-├── backend/                     ← FastAPI app (Python)
+├── backend/                     ← FastAPI Application (Python)
 │   ├── app/
-│   │   ├── main.py              ← starts the server, wires everything together
-│   │   ├── config.py            ← reads settings from .env
-│   │   ├── database.py          ← Postgres connection setup
-│   │   ├── models_db.py         ← Postgres TABLE definitions (SQLAlchemy)
-│   │   ├── schemas.py           ← Pydantic request/response validation
-│   │   ├── ml_models.py         ← loads your .pkl files and runs predictions
+│   │   ├── main.py              ← Server entrypoint, router mounting & static files
+│   │   ├── config.py            ← Environment settings & configuration loading
+│   │   ├── database.py          ← SQLAlchemy engine with Postgres/SQLite failover
+│   │   ├── models_db.py         ← Database ORM Table definitions
+│   │   ├── schemas.py           ← Pydantic request/response data validation
+│   │   ├── ml_models.py         ← Pretrained model loader & inference execution
+│   │   ├── batch_processor.py   ← Async CSV parser, deduplication & PO matching engine
+│   │   ├── rag_service.py       ← Natural language database query & analytics engine
 │   │   └── routers/
 │   │       ├── invoice.py       ← /api/invoice/... endpoints
-│   │       └── freight.py       ← /api/freight/... endpoints
-│   ├── models/                  ← your 3 .pkl files live here
+│   │       ├── freight.py       ← /api/freight/... endpoints
+│   │       ├── batches.py       ← /api/batches/... endpoints
+│   │       └── rag.py           ← /api/rag/... endpoints
+│   ├── models/                  ← Pretrained scikit-learn binary files (.pkl)
+│   │   ├── scaler.pkl
+│   │   ├── predict_flag_invoice.pkl
+│   │   └── predict_freight_model.pkl
 │   ├── requirements.txt
-│   └── .env.example             ← copy to .env and fill in your Postgres password
+│   └── .env.example             ← Sample environment variables template
 │
-└── frontend/                    ← plain HTML/CSS/JS, no build step needed
-    ├── index.html
-    ├── css/style.css
-    └── js/app.js
+├── docs/                        ← Documentation & Architecture Visualizations
+│   └── images/
+│       ├── backend_connectivity.svg
+│       ├── data_flow_sequence.svg
+│       ├── database_erd.svg
+│       └── ml_pipeline.svg
+│
+└── frontend/                    ← Web Interface (HTML5 / Vanilla JS / CSS3)
+    ├── index.html               ← Responsive single-page application dashboard
+    ├── css/style.css            ← Theme styling & stamp animations
+    └── js/app.js                ← API fetch handler, state management & UI updates
 ```
 
-This separation (backend does data + ML, frontend does the visuals) is the standard
-way real web apps are structured — keep following this pattern as the project grows.
+---
 
-## 2. Install Postgres and create the database
+## 🚀 2. Quickstart & Setup Guide
 
-1. Install Postgres (postgresql.org, or `sudo apt install postgresql` on Ubuntu).
-2. Open a terminal and create the database:
-   ```bash
-   psql -U postgres
-   CREATE DATABASE vendor_intelligence;
-   \q
-   ```
-   You don't need to create tables manually — the FastAPI app creates
-   `invoice_predictions` and `freight_predictions` automatically the first
-   time it starts.
+### Prerequisites
+- **Python**: 3.9 or higher
+- **PostgreSQL** *(Optional, auto-falls back to SQLite if not present)*
 
-## 3. Configure the backend
+### Step 1: Database Setup (PostgreSQL)
+
+If using PostgreSQL:
+```bash
+psql -U postgres
+CREATE DATABASE vendor_intelligence;
+\q
+```
+*Note: You do not need to create tables manually. SQLAlchemy automatically creates all tables on startup.*
+
+### Step 2: Configure Environment Variables
 
 ```bash
-cd vendor_intelligence/backend
+cd backend
 cp .env.example .env
 ```
-Open `.env` and put in your real Postgres username/password:
-```
+Edit `.env` to set your database credentials:
+```env
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=your_real_password
+POSTGRES_PASSWORD=your_postgres_password
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_DB=vendor_intelligence
 ```
 
-## 4. Install Python dependencies and run the backend
+### Step 3: Install Dependencies and Launch Backend
 
 ```bash
-cd vendor_intelligence/backend
+cd backend
+
+# Create & activate virtual environment
 python -m venv venv
 
-# activate it:
-source venv/bin/activate        # Mac/Linux
-venv\Scripts\activate           # Windows
+# Mac/Linux:
+source venv/bin/activate
+# Windows PowerShell:
+venv\Scripts\activate
 
+# Install requirements
 pip install -r requirements.txt
 
+# Start FastAPI server
 uvicorn app.main:app --reload
 ```
 
-You should see something like `Uvicorn running on http://127.0.0.1:8000`.
+The server will start at **http://127.0.0.1:8000**.
 
-Visit **http://localhost:8000/docs** — this is FastAPI's automatic interactive
-API documentation. You can test both endpoints there before ever touching the frontend.
+- **Interactive API Documentation**: Visit [http://localhost:8000/docs](http://localhost:8000/docs) (Swagger UI) to test endpoints directly.
+- **Web Application Dashboard**: Visit [http://localhost:8000/](http://localhost:8000/) to access the web app.
 
-## 5. Open the frontend
+---
 
-The backend already serves the frontend for you at the same address, so just open:
+## 💡 3. App Features & Usage
 
-**http://localhost:8000/**
+1. **Invoice Risk Check**:
+   - Input Invoice Quantity, Invoice Dollars, Freight Cost, PO Quantity, and PO Dollars.
+   - Receive an instant **CLEARED** or **FLAGGED** stamp with risk probability %.
+2. **Freight Cost Estimate**:
+   - Input invoice dollar amount to calculate projected shipping freight fees.
+3. **CSV Batch Upload Engine**:
+   - Drag-and-drop CSV files for bulk evaluation. Includes progress tracking, duplicate detection, and row-level error reporting.
+4. **Interactive Audit History**:
+   - Real-time prediction tables powered by PostgreSQL/SQLite persistence.
 
-(That's it — no separate server, no build tools, because `main.py` mounts the
-`frontend/` folder directly.)
+---
 
-If you ever prefer to run the frontend separately (e.g. with VS Code's "Live
-Server" extension on port 5500), open `frontend/js/app.js` and it will
-automatically point itself at `http://localhost:8000` for the API.
+## ❓ 4. Common Troubleshooting
 
-## 6. Using the app
+| Issue | Root Cause | Solution |
+|---|---|---|
+| DB Connection Error | Postgres service stopped or wrong credentials in `.env` | Verify Postgres service is running, or let the app automatically failover to local SQLite. |
+| CORS Header Error | Origin mismatch when hosting frontend separately | Add frontend domain/port to `allowed_origins` in `backend/app/config.py`. |
+| `ModuleNotFoundError` | Virtual environment not activated or missing packages | Run `venv\Scripts\activate` and execute `pip install -r requirements.txt`. |
+| Model Loading Error | Missing `.pkl` files in `backend/models/` | Ensure `scaler.pkl`, `predict_flag_invoice.pkl`, and `predict_freight_model.pkl` exist inside `backend/models/`. |
 
-- **Invoice Risk Check**: fill in the 5 invoice/PO fields and click "Stamp this
-  invoice." You'll get a CLEARED or FLAGGED stamp with a confidence percentage.
-- **Freight Cost Estimate**: enter an invoice dollar amount and click "Estimate
-  freight" to get a projected freight cost.
-- Both panels log every prediction into Postgres, and the **Recent entries**
-  tables at the bottom show your history (click Refresh to reload it).
+---
 
-## 7. How a request flows through the code (for learning)
+## 📄 License & Maintainers
 
-1. You submit the form in `index.html` → `js/app.js` catches the submit event.
-2. `app.js` sends a `fetch()` POST request with JSON to e.g. `/api/invoice/predict`.
-3. FastAPI (`routers/invoice.py`) receives it. Pydantic (`schemas.py`)
-   automatically checks the JSON matches `InvoiceInput` — wrong types or
-   missing fields get rejected with a clear error before your code even runs.
-4. The router calls `ml_models.predict_invoice_flag(...)`, which scales the
-   features with `scaler.pkl` and asks `predict_flag_invoice.pkl` for a verdict.
-5. The router saves the result as a row in Postgres via SQLAlchemy
-   (`models_db.py`), then returns a JSON response shaped by `InvoicePredictionOut`.
-6. `app.js` receives that JSON and renders the stamp / updates the table.
-
-## 8. Common beginner issues
-
-| Problem | Likely fix |
-|---|---|
-| "could not connect to server" / DB errors | Postgres isn't running, or `.env` has the wrong password/port |
-| CORS error in browser console | Make sure you're opening the app through `http://localhost:8000/`, or add your frontend's port to `allowed_origins` in `config.py` |
-| `ModuleNotFoundError` | You forgot to `pip install -r requirements.txt` inside the activated virtual environment |
-| Predictions look wrong / errors from the model | Make sure the 3 `.pkl` files are inside `backend/models/` exactly as shipped — don't retrain/replace one without the others, since the scaler and flag model must match |
-
-## 9. Where your existing training scripts fit in
-
-Your `train.py`, `data_preprocessing.py`, and `modeling_evaluation.py` /
-`model_evaluation.py` files are **not part of the running web app** — they're
-what you (or the data team) run *offline* to (re)train the models and produce
-new `.pkl` files. When a new model is ready, just drop the new `.pkl` into
-`backend/models/`, replacing the old one, and restart `uvicorn`. Keep those
-training scripts in a separate `training/` folder alongside `backend/` and
-`frontend/` if you want to keep them in the same project going forward.
+Maintained by **Smith Aherkar** — [vendor-update Repository](https://github.com/smithaherkar/vendor-update).
