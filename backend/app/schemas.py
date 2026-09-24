@@ -59,13 +59,6 @@ class InvoicePredictionOut(BaseModel):
         from_attributes = True
 
 
-class InvoiceExplainOut(BaseModel):
-    """What the API sends back for a RAG audit explanation."""
-    id: int
-    discrepancies: dict[str, Any]
-    triggered_rules: list[str]
-    explanation_markdown: str
-    used_fallback: bool
 
 
 # ---------- Freight cost ----------

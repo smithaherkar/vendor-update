@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from app.database import get_db, SessionLocal
-from app import models_db, schemas, services, rag_service, batch_processor
+from app import models_db, schemas, services, batch_processor
 
 router = APIRouter(prefix="/api/invoice", tags=["Invoice Risk"])
 
@@ -108,32 +108,6 @@ def get_invoice_batch_status(batch_uuid: str, db: Session = Depends(get_db)):
     return batch
 
 
-@router.get("/{invoice_id}/explain", response_model=schemas.InvoiceExplainOut)
-def explain_invoice(invoice_id: int, db: Session = Depends(get_db)):
-    """
-    RAG-style audit explanation for a saved prediction:
-    discrepancy math + RULE-101..106 + a Gemini-written Markdown summary.
-    """
-    record = (
-        db.query(models_db.InvoicePrediction)
-        .filter(models_db.InvoicePrediction.id == invoice_id)
-        .first()
-    )
-    if record is None:
-        raise HTTPException(status_code=404, detail=f"Invoice prediction #{invoice_id} not found")
-
-    payload = {
-        "invoice_quantity": record.invoice_quantity,
-        "invoice_dollars": record.invoice_dollars,
-        "Freight": record.freight,
-        "total_item_quantity": record.total_item_quantity,
-        "total_item_dollars": record.total_item_dollars,
-    }
-    result = rag_service.explain_invoice_flag(
-        payload, record.predicted_flag, record.risk_probability
-    )
-
-    return schemas.InvoiceExplainOut(id=record.id, **result)
 
 
 @router.get("/history", response_model=list[schemas.InvoicePredictionOut])

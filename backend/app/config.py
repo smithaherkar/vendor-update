@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     # --- GenAI (Gemini via LangChain) ---
     gemini_api_key: str = ""
+    gemini_model: str = "gemini-1.5-flash"
 
     # --- CORS: which frontend origins may call this API ---
     allowed_origins: list[str] = [

@@ -910,3 +910,138 @@ body {
   * { animation: none !important; transition: none !important; }
 }
 
+/* ============================================================
+   DASHBOARD CHARTS
+   ============================================================ */
+
+.dash-charts {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 20px;
+  margin: 24px 0 20px;
+}
+
+@media (max-width: 760px) {
+  .dash-charts { grid-template-columns: 1fr; }
+}
+
+.chart-card {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 20px 22px 18px;
+  box-shadow: 0 2px 8px rgba(16,35,58,0.06);
+}
+
+.chart-card__title {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.chart-card__sub {
+  font-size: 0.80rem;
+  color: var(--muted-text);
+  margin-bottom: 16px;
+}
+
+.chart-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.chart-empty {
+  text-align: center;
+  color: var(--muted-text);
+  font-size: 0.84rem;
+  padding: 24px 0;
+}
+
+/* ============================================================
+   AI ASSISTANT — CHIPS GRID & QUERY HISTORY
+   ============================================================ */
+
+.sample-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 14px;
+}
+
+.chip {
+  font-family: var(--font-body);
+  font-size: 0.80rem;
+  font-weight: 500;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 20px;
+  padding: 6px 14px;
+  cursor: pointer;
+  color: var(--ink-text);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+/* Query history */
+.query-history-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted-text);
+  margin: 14px 0 6px;
+}
+
+.query-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.query-history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.83rem;
+  color: var(--ink-text);
+  cursor: pointer;
+  transition: background 0.12s;
+  text-align: left;
+  width: 100%;
+}
+
+.query-history-item:hover {
+  background: #EAE3D2;
+}
+
+.query-history-item .qh-icon {
+  font-size: 0.75rem;
+  color: var(--muted-text);
+  flex-shrink: 0;
+}
+
+/* Export button highlight */
+#exportInvoiceCSV, #exportFreightCSV {
+  color: var(--forest);
+  border-color: var(--forest);
+}
+#exportInvoiceCSV:hover, #exportFreightCSV:hover {
+  background: var(--forest);
+  color: #fff;
+}
+

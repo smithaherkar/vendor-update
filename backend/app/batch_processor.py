@@ -53,15 +53,19 @@ def check_and_create_batch(
     existing = (
         db.query(models_db.UploadBatch)
         .filter(models_db.UploadBatch.file_hash == file_hash)
-        .filter(models_db.UploadBatch.status.in_(["DONE", "PROCESSING"]))
         .first()
     )
     if existing:
-        uploaded_str = existing.uploaded_at.strftime("%Y-%m-%d %H:%M:%S") if existing.uploaded_at else "a prior date"
-        raise HTTPException(
-            status_code=400,
-            detail=f"This exact file was already uploaded as batch {existing.batch_uuid} on {uploaded_str}.",
-        )
+        if existing.status == "FAILED":
+            logger.info(f"Removing prior FAILED batch {existing.batch_uuid} for hash {file_hash} to allow retry.")
+            db.delete(existing)
+            db.commit()
+        else:
+            uploaded_str = existing.uploaded_at.strftime("%Y-%m-%d %H:%M:%S") if existing.uploaded_at else "a prior date"
+            raise HTTPException(
+                status_code=400,
+                detail=f"This exact CSV file was already uploaded as batch {existing.batch_uuid} on {uploaded_str} (Status: {existing.status}).",
+            )
 
     batch_uuid_str = str(uuid.uuid4())
     batch = models_db.UploadBatch(
@@ -72,8 +76,15 @@ def check_and_create_batch(
         status="PROCESSING",
     )
     db.add(batch)
-    db.commit()
-    db.refresh(batch)
+    try:
+        db.commit()
+        db.refresh(batch)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="This exact CSV file has already been uploaded previously.",
+        )
     return batch
 
 

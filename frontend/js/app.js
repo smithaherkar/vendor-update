@@ -4,6 +4,10 @@
 
 const API_BASE_URL = window.location.port === "8000" ? "" : "http://localhost:8000";
 
+// ---- Chart.js instances (kept so we can destroy/re-draw on refresh) ----
+let riskDonutInstance = null;
+let spendBarInstance   = null;
+
 // --- DOM Elements ---
 const navLinks = document.querySelectorAll(".nav-link");
 const pageViews = document.querySelectorAll(".page-view");
@@ -23,11 +27,6 @@ const historySourceFilter = document.getElementById("historySourceFilter");
 const historyFlaggedFilter = document.getElementById("historyFlaggedFilter");
 const historyBatchFilter = document.getElementById("historyBatchFilter");
 const clearHistoryFilters = document.getElementById("clearHistoryFilters");
-
-const explainModal = document.getElementById("explainModal");
-const closeExplainModal = document.getElementById("closeExplainModal");
-const modalTitle = document.getElementById("modalTitle");
-const modalContent = document.getElementById("modalContent");
 
 const batchErrorsModal = document.getElementById("batchErrorsModal");
 const closeBatchErrorsModal = document.getElementById("closeBatchErrorsModal");
@@ -161,6 +160,7 @@ async function loadDashboardMetrics() {
 
     document.getElementById("dashTotalInvoices").textContent = invoices.length;
     const flagged = invoices.filter(i => i.predicted_flag === 1).length;
+    const cleared = invoices.length - flagged;
     const flaggedPct = invoices.length ? ((flagged / invoices.length) * 100).toFixed(1) : 0;
     document.getElementById("dashFlaggedRate").textContent = `${flaggedPct}% Flagged`;
 
@@ -168,6 +168,108 @@ async function loadDashboardMetrics() {
     document.getElementById("dashTotalBatches").textContent = batches.length;
     const doneBatches = batches.filter(b => b.status === "DONE").length;
     document.getElementById("dashCompletedBatches").textContent = `${doneBatches} Completed`;
+
+    // ── Chart 1: Risk Donut ──────────────────────────────────────────
+    const donutCanvas = document.getElementById("riskDonutChart");
+    const donutEmpty  = document.getElementById("riskChartEmpty");
+    if (invoices.length === 0) {
+      donutCanvas.style.display = "none";
+      donutEmpty.style.display  = "block";
+    } else {
+      donutCanvas.style.display = "block";
+      donutEmpty.style.display  = "none";
+      if (riskDonutInstance) riskDonutInstance.destroy();
+      riskDonutInstance = new Chart(donutCanvas, {
+        type: "doughnut",
+        data: {
+          labels: ["Flagged", "Cleared"],
+          datasets: [{
+            data: [flagged, cleared],
+            backgroundColor: ["#A83A32", "#2E6B4F"],
+            borderColor: ["#F6F1E6", "#F6F1E6"],
+            borderWidth: 3,
+            hoverOffset: 6,
+          }],
+        },
+        options: {
+          cutout: "68%",
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: { font: { family: "JetBrains Mono", size: 11 }, color: "#1D2C3B", padding: 14 },
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.label}: ${ctx.parsed} (${((ctx.parsed / invoices.length) * 100).toFixed(1)}%)`,
+              },
+            },
+          },
+        },
+      });
+    }
+
+    // ── Chart 2: Top-5 Vendors by Spend Bar ─────────────────────────
+    const barCanvas = document.getElementById("spendBarChart");
+    const barEmpty  = document.getElementById("spendChartEmpty");
+
+    // Aggregate spend from invoice history
+    const spendMap = {};
+    invoices.forEach(inv => {
+      const v = inv.vendor_number || "Unknown";
+      spendMap[v] = (spendMap[v] || 0) + (inv.invoice_dollars || 0);
+    });
+    const sorted = Object.entries(spendMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    if (sorted.length === 0) {
+      barCanvas.style.display = "none";
+      barEmpty.style.display  = "block";
+    } else {
+      barCanvas.style.display = "block";
+      barEmpty.style.display  = "none";
+      if (spendBarInstance) spendBarInstance.destroy();
+      spendBarInstance = new Chart(barCanvas, {
+        type: "bar",
+        data: {
+          labels: sorted.map(([v]) => v),
+          datasets: [{
+            label: "Total Spend ($)",
+            data: sorted.map(([, s]) => s),
+            backgroundColor: [
+              "rgba(192,89,44,0.80)",
+              "rgba(192,89,44,0.65)",
+              "rgba(192,89,44,0.50)",
+              "rgba(192,89,44,0.38)",
+              "rgba(192,89,44,0.26)",
+            ],
+            borderColor: "rgba(192,89,44,1)",
+            borderWidth: 1,
+            borderRadius: 4,
+          }],
+        },
+        options: {
+          indexAxis: "y",
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` $${Number(ctx.parsed.x).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              ticks: { font: { family: "JetBrains Mono", size: 10 }, color: "#5B6B7A",
+                callback: v => "$" + Number(v).toLocaleString() },
+              grid: { color: "rgba(203,191,166,0.4)" },
+            },
+            y: { ticks: { font: { family: "JetBrains Mono", size: 11 }, color: "#1D2C3B" }, grid: { display: false } },
+          },
+        },
+      });
+    }
+
   } catch (err) {
     console.warn("Could not load metrics:", err);
   }
@@ -205,9 +307,6 @@ invoiceForm.addEventListener("submit", async (e) => {
           ${isFlagged ? "Flagged" : "Cleared"}
           <small>confidence ${(result.risk_probability * 100).toFixed(1)}% &middot; entry #${result.id}</small>
         </div>
-        <button type="button" class="btn btn--ghost btn--sm explain-btn" onclick="explainInvoice(${result.id})">
-          Why Flagged? (Audit RAG)
-        </button>
       </div>
     `;
     loadDashboardMetrics();
@@ -422,7 +521,6 @@ async function loadUnifiedHistory() {
         </td>
         <td><span class="verdict-tag ${r.risk_label === "FLAGGED" ? "flagged" : "cleared"}">${r.risk_label}</span></td>
         <td>${(r.risk_probability * 100).toFixed(1)}%</td>
-        <td><button type="button" class="btn-link" onclick="explainInvoice(${r.id})">Why Flagged?</button></td>
         <td>${timestamp(r.created_at)}</td>
       </tr>
     `).join("");
@@ -461,6 +559,41 @@ clearHistoryFilters.addEventListener("click", () => {
 });
 
 refreshBtn.addEventListener("click", loadUnifiedHistory);
+
+// ── CSV Export ──────────────────────────────────────────────────────────────
+
+function exportTableAsCSV(tableId, filename) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const rows = Array.from(table.querySelectorAll("tr"));
+  const csvLines = rows.map(row => {
+    return Array.from(row.querySelectorAll("th, td"))
+      .map(cell => {
+        // Strip HTML tags, trim whitespace
+        const text = cell.innerText.replace(/\n/g, " ").trim();
+        // Wrap in quotes if contains comma, quote, or newline
+        return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+      })
+      .join(",");
+  });
+  const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href     = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById("exportInvoiceCSV").addEventListener("click", () => {
+  exportTableAsCSV("invoiceHistoryTable", `invoice_history_${Date.now()}.csv`);
+});
+
+document.getElementById("exportFreightCSV").addEventListener("click", () => {
+  exportTableAsCSV("freightHistoryTable", `freight_history_${Date.now()}.csv`);
+});
 
 function filterHistoryByBatch(batchUuid) {
   window.location.hash = "#history";
@@ -534,42 +667,62 @@ async function viewBatchErrors(batchUuid) {
 closeBatchErrorsModal.addEventListener("click", () => batchErrorsModal.hidden = true);
 batchErrorsModal.addEventListener("click", (e) => { if (e.target === batchErrorsModal) batchErrorsModal.hidden = true; });
 
-// ---------- Audit Explanation Modal ----------
-
-async function explainInvoice(invoiceId) {
-  modalTitle.textContent = `Invoice Audit Explanation #${invoiceId}`;
-  modalContent.innerHTML = `<p class="loading-text">Fetching RAG audit report for entry #${invoiceId}…</p>`;
-  explainModal.hidden = false;
-
-  try {
-    const data = await apiRequest(`/api/invoice/${invoiceId}/explain`);
-    modalContent.innerHTML = `
-      <div class="modal-report">
-        ${data.used_fallback ? `<div class="fallback-banner">ℹ️ Standard Audit Fallback (Set GEMINI_API_KEY for AI Narrative)</div>` : ''}
-        <div class="report-text">${renderMarkdown(data.explanation_markdown)}</div>
-      </div>
-    `;
-  } catch (err) {
-    modalContent.innerHTML = `<p class="error-note">Failed to load audit explanation: ${err.message}</p>`;
-  }
-}
-
-closeExplainModal.addEventListener("click", () => explainModal.hidden = true);
-explainModal.addEventListener("click", (e) => { if (e.target === explainModal) explainModal.hidden = true; });
-
 window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    explainModal.hidden = true;
     batchErrorsModal.hidden = true;
   }
 });
 
-// ---------- Vendor AI Assistant ----------
+// ── AI Assistant Query History (sessionStorage, max 5) ────────────────────
+
+const HISTORY_KEY = "vi_query_history";
+
+function getQueryHistory() {
+  try { return JSON.parse(sessionStorage.getItem(HISTORY_KEY) || "[]"); }
+  catch { return []; }
+}
+
+function saveQueryToHistory(query) {
+  let history = getQueryHistory().filter(q => q !== query); // deduplicate
+  history.unshift(query);
+  history = history.slice(0, 5); // keep last 5
+  sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  renderQueryHistory();
+}
+
+function renderQueryHistory() {
+  const wrap = document.getElementById("queryHistoryWrap");
+  const list = document.getElementById("queryHistoryList");
+  const history = getQueryHistory();
+  if (history.length === 0) { wrap.style.display = "none"; return; }
+  wrap.style.display = "block";
+  list.innerHTML = history.map(q => `
+    <button type="button" class="query-history-item" data-query="${q.replace(/"/g, '&quot;')}">
+      <span class="qh-icon">↩</span>
+      <span>${q}</span>
+    </button>
+  `).join("");
+  // Wire clicks
+  list.querySelectorAll(".query-history-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      assistantInput.value = btn.dataset.query;
+      assistantInput.focus();
+    });
+  });
+}
+
+// Render on page load
+renderQueryHistory();
+
+// ── Vendor AI Assistant ───────────────────────────────────────────────────
 
 assistantForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const msg = assistantInput.value.trim();
   if (!msg) return;
+
+  // Save to query history before sending
+  saveQueryToHistory(msg);
 
   setButtonLoading(assistantForm, true, "Thinking…");
   assistantResult.innerHTML = "";
@@ -604,3 +757,4 @@ document.querySelectorAll(".chip").forEach((chip) => {
 
 checkHealth();
 handleRoute();
+renderQueryHistory();

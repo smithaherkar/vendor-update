@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -104,6 +105,26 @@
               <span class="metric-card__title">Upload Batches</span>
               <span class="metric-card__value" id="dashTotalBatches">0</span>
               <span class="metric-card__sub" id="dashCompletedBatches">0 Completed</span>
+            </div>
+          </div>
+
+          <!-- ── Charts Row ── -->
+          <div class="dash-charts">
+            <div class="chart-card">
+              <div class="chart-card__title">🔴 Risk Breakdown</div>
+              <div class="chart-card__sub">Flagged vs Cleared invoices</div>
+              <div class="chart-wrap" style="max-width:220px; margin:0 auto;">
+                <canvas id="riskDonutChart"></canvas>
+              </div>
+              <p class="chart-empty" id="riskChartEmpty" style="display:none;">No invoice data yet.</p>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card__title">💰 Top Vendors by Spend</div>
+              <div class="chart-card__sub">Total billed dollars, top 5</div>
+              <div class="chart-wrap">
+                <canvas id="spendBarChart"></canvas>
+              </div>
+              <p class="chart-empty" id="spendChartEmpty" style="display:none;">No spend data yet.</p>
             </div>
           </div>
 
@@ -280,7 +301,11 @@
         <div class="history" style="padding: 0; max-width: 100%;">
           <div class="history__head">
             <h2>Unified Predictions History</h2>
-            <button id="refreshHistory" class="btn btn--ghost btn--sm">Refresh Ledger</button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button id="refreshHistory" class="btn btn--ghost btn--sm">Refresh Ledger</button>
+              <button id="exportInvoiceCSV" class="btn btn--ghost btn--sm" title="Download invoice history as CSV">⬇️ Export Invoices CSV</button>
+              <button id="exportFreightCSV" class="btn btn--ghost btn--sm" title="Download freight history as CSV">⬇️ Export Freight CSV</button>
+            </div>
           </div>
 
           <!-- Filters Bar -->
@@ -314,7 +339,7 @@
               <table class="ledger-table" id="invoiceHistoryTable">
                 <thead>
                   <tr>
-                    <th>#</th><th>Vendor / PO / Date</th><th>Invoice $</th><th>Freight $</th><th>Source</th><th>Verdict</th><th>Confidence</th><th>Audit RAG</th><th>Logged</th>
+                    <th>#</th><th>Vendor / PO / Date</th><th>Invoice $</th><th>Freight $</th><th>Source</th><th>Verdict</th><th>Confidence</th><th>Logged</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -373,21 +398,36 @@
       <section class="page-view" id="view-assistant">
         <div class="ledger-card ledger-card--full" id="assistantCard">
           <div class="ledger-card__head">
-            <span class="ledger-card__index">MANIFEST 03 &middot; AI AGENT</span>
+            <span class="ledger-card__index">INTELLIGENCE AGENT</span>
             <h2>Vendor AI Assistant</h2>
-            <p class="ledger-card__desc">Ask natural-language questions about vendor invoices, freight projections, or recent audit flags. Powered by a tool-calling agent.</p>
+            <p class="ledger-card__desc">Query deterministic SQL analytics across vendors, risk rates, spend rankings, freight metrics, and data confidence.</p>
           </div>
 
           <form id="assistantForm" class="ledger-form assistant-form">
             <label class="field field--full">
               <span>Question / Prompt</span>
-              <input type="text" name="message" id="assistantInput" required placeholder="e.g. What is the estimated freight for a $45,000 invoice?" />
+              <input type="text" name="message" id="assistantInput" required placeholder="e.g. Which vendors have the highest flag rate?" />
             </label>
 
             <div class="sample-chips">
-              <button type="button" class="chip" data-prompt="What is the estimated freight for a $50,000 order?">Freight for $50k</button>
-              <button type="button" class="chip" data-prompt="Check risk for invoice qty 6000, dollars 58000, freight 300, po qty 6000, po dollars 58000">Score invoice risk</button>
-              <button type="button" class="chip" data-prompt="Show recent flagged invoices">Recent flagged invoices</button>
+              <button type="button" class="chip" data-prompt="Which vendors have the highest flag rate?">🚩 Rank by Flag Rate</button>
+              <button type="button" class="chip" data-prompt="What is the overall company-wide flag rate?">🏢 Company Flag Rate</button>
+              <button type="button" class="chip" data-prompt="Top vendors by total spend">💰 Top Spend Vendors</button>
+              <button type="button" class="chip" data-prompt="Show vendors with low invoice history">📉 Low History Vendors</button>
+              <button type="button" class="chip" data-prompt="What is the largest single invoice on record?">📄 Largest Invoice</button>
+              <button type="button" class="chip" data-prompt="Which vendors have the highest average freight?">🚛 Highest Freight</button>
+              <button type="button" class="chip" data-prompt="Show vendors that have never been flagged">✅ Clean Vendors</button>
+              <button type="button" class="chip" data-prompt="What is the single riskiest invoice on record?">⚠️ Riskiest Invoice</button>
+              <button type="button" class="chip" data-prompt="Which vendors have the biggest dollar mismatches?">🔍 Dollar Mismatches</button>
+              <button type="button" class="chip" data-prompt="Average invoice dollar amount by vendor">📊 Avg Invoice Value</button>
+              <button type="button" class="chip" data-prompt="Average freight percentage by vendor">📦 Freight Ratio</button>
+              <button type="button" class="chip" data-prompt="What is the largest single invoice mismatch on record?">❗ Largest Mismatch</button>
+            </div>
+
+            <!-- Query History -->
+            <div id="queryHistoryWrap" style="display:none;">
+              <div class="query-history-label">🕑 Recent queries</div>
+              <div id="queryHistoryList" class="query-history-list"></div>
             </div>
 
             <button type="submit" class="btn btn--primary">
@@ -400,20 +440,6 @@
       </section>
 
     </main>
-  </div>
-
-  <!-- AUDIT EXPLANATION MODAL -->
-  <div class="modal-backdrop" id="explainModal" hidden>
-    <div class="modal-dialog">
-      <div class="modal-head">
-        <span class="modal-badge">RAG AUDIT REPORT</span>
-        <h2 id="modalTitle">Invoice Audit Explanation</h2>
-        <button type="button" class="modal-close" id="closeExplainModal" aria-label="Close modal">&times;</button>
-      </div>
-      <div class="modal-body" id="modalContent">
-        <p>Loading explanation report…</p>
-      </div>
-    </div>
   </div>
 
   <!-- BATCH ROW ERRORS DETAIL MODAL -->
@@ -446,6 +472,6 @@
     <p>Vendor Intelligence &middot; internal desk workspace &middot; models retrained by the data team</p>
   </footer>
 
-<script src="js/app.js"></script>
+<script src="js/app.js?v=2.0"></script>
 </body>
 </html>
