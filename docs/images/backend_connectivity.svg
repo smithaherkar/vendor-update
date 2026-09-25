@@ -1,13 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 680" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 780" width="100%" height="100%">
   <defs>
     <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a"/>
-      <stop offset="50%" stop-color="#1e293b"/>
-      <stop offset="100%" stop-color="#0f172a"/>
-    </linearGradient>
-    <linearGradient id="card-grad-1" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1e293b"/>
-      <stop offset="100%" stop-color="#334155"/>
+      <stop offset="0%" stop-color="#090d16"/>
+      <stop offset="50%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#090d16"/>
     </linearGradient>
     <linearGradient id="primary-grad" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#6366f1"/>
@@ -21,8 +17,16 @@
       <stop offset="0%" stop-color="#f59e0b"/>
       <stop offset="100%" stop-color="#d97706"/>
     </linearGradient>
+    <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="purple-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
     <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
-      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.4"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.5"/>
     </filter>
     <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8" />
@@ -33,159 +37,181 @@
     <marker id="arrow-emerald" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 1 L 10 5 L 0 9 z" fill="#34d399" />
     </marker>
+    <marker id="arrow-sky" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#38bdf8" />
+    </marker>
   </defs>
 
   <!-- Background -->
-  <rect width="1000" height="680" rx="16" fill="url(#bg-grad)" />
-  <rect x="2" y="2" width="996" height="676" rx="14" fill="none" stroke="#334155" stroke-width="1.5"/>
+  <rect width="1060" height="780" rx="16" fill="url(#bg-grad)" />
+  <rect x="2" y="2" width="1056" height="776" rx="14" fill="none" stroke="#1e293b" stroke-width="1.5"/>
 
   <!-- Header -->
-  <g transform="translate(40, 35)">
-    <rect width="40" height="40" rx="10" fill="url(#primary-grad)" filter="url(#shadow)"/>
-    <text x="20" y="25" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="20">VI</text>
-    <text x="55" y="22" fill="#f8fafc" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="20">Vendor Intelligence — Backend Connectivity &amp; System Architecture</text>
-    <text x="55" y="38" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="12">Interactive Web App, FastAPI Microservices, Machine Learning Core &amp; Dual Storage Layer</text>
+  <g transform="translate(40, 28)">
+    <rect width="44" height="44" rx="10" fill="url(#primary-grad)" filter="url(#shadow)"/>
+    <text x="22" y="28" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="22">VI</text>
+    <text x="60" y="24" fill="#f8fafc" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="21">Vendor Intelligence — System Architecture &amp; Connectivity</text>
+    <text x="60" y="42" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="12">Decoupled 4-Layer Architecture: Manifest Desk UI, FastAPI Gateway, Asynchronous Ingestion &amp; Dual Persistence</text>
   </g>
 
-  <!-- LAYER 1: FRONTEND CLIENT -->
-  <g transform="translate(40, 95)" filter="url(#shadow)">
-    <rect width="920" height="110" rx="12" fill="#1e293b" stroke="#3b82f6" stroke-width="1.5"/>
-    <rect width="920" height="30" rx="12" fill="#1e293b"/>
-    <path d="M 0 26 L 920 26" stroke="#334155" stroke-width="1"/>
-    <circle cx="20" cy="15" r="5" fill="#ef4444"/>
-    <circle cx="35" cy="15" r="5" fill="#f59e0b"/>
-    <circle cx="50" cy="15" r="5" fill="#10b981"/>
-    <text x="70" y="19" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="12">Frontend Layer (Browser Application — HTML5 / Vanilla JS / CSS3)</text>
+  <!-- LAYER 1: PRESENTATION CLIENT -->
+  <g transform="translate(40, 90)" filter="url(#shadow)">
+    <rect width="980" height="106" rx="12" fill="#1e293b" stroke="#3b82f6" stroke-width="1.5"/>
+    <rect width="980" height="28" rx="12" fill="#15213b"/>
+    <path d="M 0 28 L 980 28" stroke="#334155" stroke-width="1"/>
+    <circle cx="20" cy="14" r="5" fill="#ef4444"/>
+    <circle cx="35" cy="14" r="5" fill="#f59e0b"/>
+    <circle cx="50" cy="14" r="5" fill="#10b981"/>
+    <text x="70" y="18" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="12">Layer 1: Presentation Client (Manifest Desk — HTML5 / Vanilla JS / CSS3 / Static Mounted)</text>
     
-    <!-- Sub-components inside frontend -->
-    <g transform="translate(25, 42)">
-      <!-- Tab 1 -->
-      <rect width="200" height="52" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
-      <text x="100" y="22" text-anchor="middle" fill="#60a5fa" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">Invoice Risk UI</text>
-      <text x="100" y="38" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="11">Single Invoice Form</text>
+    <!-- UI Cards -->
+    <g transform="translate(18, 38)">
+      <rect width="220" height="54" rx="8" fill="#0f172a" stroke="#1e3a8a" stroke-width="1"/>
+      <text x="110" y="22" text-anchor="middle" fill="#60a5fa" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">Invoice Risk Form</text>
+      <text x="110" y="40" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="11">Single Evaluation &amp; Stamp</text>
       
-      <!-- Tab 2 -->
-      <rect x="220" width="200" height="52" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
-      <text x="320" y="22" text-anchor="middle" fill="#34d399" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">Freight Cost UI</text>
-      <text x="320" y="38" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="11">Estimator Form</text>
+      <rect x="238" width="220" height="54" rx="8" fill="#0f172a" stroke="#065f46" stroke-width="1"/>
+      <text x="348" y="22" text-anchor="middle" fill="#34d399" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">Freight Cost Estimator</text>
+      <text x="348" y="40" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="11">OLS Baseline Calculator</text>
       
-      <!-- Tab 3 -->
-      <rect x="440" width="210" height="52" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
-      <text x="545" y="22" text-anchor="middle" fill="#fbbf24" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">CSV Batch Upload UI</text>
-      <text x="545" y="38" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="11">Bulk Drag-and-Drop</text>
+      <rect x="476" width="240" height="54" rx="8" fill="#0f172a" stroke="#854d0e" stroke-width="1"/>
+      <text x="596" y="22" text-anchor="middle" fill="#fbbf24" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">CSV Batch Upload Desk</text>
+      <text x="596" y="40" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="11">Async Drag-and-Drop &amp; Tracking</text>
       
-      <!-- Tab 4 -->
-      <rect x="660" width="210" height="52" rx="8" fill="#0f172a" stroke="#334155" stroke-width="1"/>
-      <text x="765" y="22" text-anchor="middle" fill="#a78bfa" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">AI Assistant &amp; Analytics</text>
-      <text x="765" y="38" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="11">RAG Query &amp; History</text>
+      <rect x="732" width="216" height="54" rx="8" fill="#0f172a" stroke="#581c87" stroke-width="1"/>
+      <text x="840" y="22" text-anchor="middle" fill="#c084fc" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="13">SQL Analytics Assistant</text>
+      <text x="840" y="40" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="11">17 In-Memory Queries UI</text>
     </g>
   </g>
 
-  <!-- Connectors from Frontend to Backend -->
-  <path d="M 165 205 L 165 245" stroke="#60a5fa" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow-indigo)"/>
-  <path d="M 385 205 L 385 245" stroke="#34d399" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow-emerald)"/>
-  <path d="M 610 205 L 610 245" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow)"/>
-  <path d="M 830 205 L 830 245" stroke="#a78bfa" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow)"/>
-  
-  <text x="500" y="232" text-anchor="middle" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">HTTP REST / JSON / Async File Upload (CORS Enabled)</text>
+  <!-- Connectors Layer 1 -> Layer 2 -->
+  <path d="M 170 196 L 170 236" stroke="#60a5fa" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow-indigo)"/>
+  <path d="M 410 196 L 410 236" stroke="#34d399" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow-emerald)"/>
+  <path d="M 650 196 L 650 236" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow)"/>
+  <path d="M 890 196 L 890 236" stroke="#c084fc" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow)"/>
+  <text x="530" y="222" text-anchor="middle" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600">HTTP REST / Multipart CSV Ingestion (CORS Enabled &amp; Static Mounted)</text>
 
   <!-- LAYER 2: FASTAPI BACKEND API GATEWAY -->
-  <g transform="translate(40, 250)" filter="url(#shadow)">
-    <rect width="920" height="155" rx="12" fill="#1e293b" stroke="#6366f1" stroke-width="1.5"/>
-    <text x="20" y="25" fill="#818cf8" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="13">FastAPI REST Server (app/main.py)</text>
-    <rect x="740" y="10" width="160" height="22" rx="6" fill="#312e81"/>
-    <text x="820" y="25" text-anchor="middle" fill="#c7d2fe" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600">Pydantic Validation</text>
+  <g transform="translate(40, 240)" filter="url(#shadow)">
+    <rect width="980" height="142" rx="12" fill="#1e293b" stroke="#6366f1" stroke-width="1.5"/>
+    <text x="20" y="24" fill="#818cf8" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="13">Layer 2: FastAPI REST Gateway (app/main.py)</text>
+    <rect x="790" y="10" width="170" height="22" rx="6" fill="#312e81"/>
+    <text x="875" y="25" text-anchor="middle" fill="#c7d2fe" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600">Pydantic v2 Contracts</text>
 
     <!-- Routers -->
-    <g transform="translate(20, 40)">
-      <!-- Router 1 -->
-      <rect width="210" height="95" rx="8" fill="#0f172a" stroke="#312e81" stroke-width="1"/>
-      <text x="15" y="22" fill="#818cf8" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">routers/invoice.py</text>
-      <text x="15" y="42" fill="#cbd5e1" font-family="monospace" font-size="11">POST /api/invoice/predict</text>
-      <text x="15" y="60" fill="#cbd5e1" font-family="monospace" font-size="11">GET  /api/invoice/history</text>
-      <text x="15" y="80" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="10">Invoice Risk Scoring</text>
+    <g transform="translate(18, 38)">
+      <rect width="224" height="88" rx="8" fill="#0f172a" stroke="#312e81" stroke-width="1"/>
+      <text x="14" y="22" fill="#818cf8" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">routers/invoice.py</text>
+      <text x="14" y="42" fill="#cbd5e1" font-family="monospace" font-size="11">POST /api/invoice/predict</text>
+      <text x="14" y="60" fill="#cbd5e1" font-family="monospace" font-size="11">GET  /api/invoice/history</text>
+      <text x="14" y="78" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="10">Invoice Risk Triage Endpoint</text>
 
-      <!-- Router 2 -->
-      <rect x="225" width="210" height="95" rx="8" fill="#0f172a" stroke="#065f46" stroke-width="1"/>
-      <text x="240" y="22" fill="#34d399" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">routers/freight.py</text>
-      <text x="240" y="42" fill="#cbd5e1" font-family="monospace" font-size="11">POST /api/freight/predict</text>
-      <text x="240" y="60" fill="#cbd5e1" font-family="monospace" font-size="11">GET  /api/freight/history</text>
-      <text x="240" y="80" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="10">Freight Cost Estimation</text>
+      <rect x="238" width="224" height="88" rx="8" fill="#0f172a" stroke="#065f46" stroke-width="1"/>
+      <text x="252" y="22" fill="#34d399" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">routers/freight.py</text>
+      <text x="252" y="42" fill="#cbd5e1" font-family="monospace" font-size="11">POST /api/freight/predict</text>
+      <text x="252" y="60" fill="#cbd5e1" font-family="monospace" font-size="11">GET  /api/freight/history</text>
+      <text x="252" y="78" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="10">Freight Cost Estimation</text>
 
-      <!-- Router 3 -->
-      <rect x="450" width="210" height="95" rx="8" fill="#0f172a" stroke="#854d0e" stroke-width="1"/>
-      <text x="465" y="22" fill="#fbbf24" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">routers/batches.py</text>
-      <text x="465" y="42" fill="#cbd5e1" font-family="monospace" font-size="11">POST /api/batches/upload</text>
-      <text x="465" y="60" fill="#cbd5e1" font-family="monospace" font-size="11">GET  /api/batches/{uuid}</text>
-      <text x="465" y="80" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="10">Async CSV Batch Execution</text>
+      <rect x="476" width="240" height="88" rx="8" fill="#0f172a" stroke="#854d0e" stroke-width="1"/>
+      <text x="490" y="22" fill="#fbbf24" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">routers/batches.py</text>
+      <text x="490" y="42" fill="#cbd5e1" font-family="monospace" font-size="11">POST /api/invoice/batch-upload</text>
+      <text x="490" y="60" fill="#cbd5e1" font-family="monospace" font-size="11">GET  /api/batches/{id}/status</text>
+      <text x="490" y="78" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="10">Async Streaming Batch Gateway</text>
 
-      <!-- Router 4 -->
-      <rect x="675" width="205" height="95" rx="8" fill="#0f172a" stroke="#581c87" stroke-width="1"/>
-      <text x="690" y="22" fill="#c084fc" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">routers/rag.py</text>
-      <text x="690" y="42" fill="#cbd5e1" font-family="monospace" font-size="11">POST /api/rag/query</text>
-      <text x="690" y="60" fill="#cbd5e1" font-family="monospace" font-size="11">GET  /api/health</text>
-      <text x="690" y="80" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="10">LLM &amp; System Analytics</text>
+      <rect x="730" width="232" height="88" rx="8" fill="#0f172a" stroke="#581c87" stroke-width="1"/>
+      <text x="744" y="22" fill="#c084fc" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">routers/rag.py</text>
+      <text x="744" y="42" fill="#cbd5e1" font-family="monospace" font-size="11">POST /api/rag/ask</text>
+      <text x="744" y="60" fill="#cbd5e1" font-family="monospace" font-size="11">GET  /api/health</text>
+      <text x="744" y="78" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="10">17 SQL Fact Routines Endpoint</text>
     </g>
   </g>
 
-  <!-- Connectors from Backend to Core Services -->
-  <path d="M 150 405 L 150 445" stroke="#818cf8" stroke-width="2" marker-end="url(#arrow-indigo)"/>
-  <path d="M 370 405 L 370 445" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-emerald)"/>
-  <path d="M 600 405 L 600 445" stroke="#fbbf24" stroke-width="2" marker-end="url(#arrow)"/>
-  <path d="M 825 405 L 825 445" stroke="#c084fc" stroke-width="2" marker-end="url(#arrow)"/>
+  <!-- Connectors Layer 2 -> Layer 3 -->
+  <path d="M 150 382 L 150 422" stroke="#818cf8" stroke-width="2" marker-end="url(#arrow-indigo)"/>
+  <path d="M 370 382 L 370 422" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-emerald)"/>
+  <path d="M 600 382 L 600 422" stroke="#fbbf24" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M 850 382 L 850 422" stroke="#c084fc" stroke-width="2" marker-end="url(#arrow)"/>
 
-  <!-- LAYER 3: CORE LOGIC & SERVICES -->
-  <g transform="translate(40, 450)" filter="url(#shadow)">
-    <rect width="920" height="105" rx="12" fill="#1e293b" stroke="#10b981" stroke-width="1.5"/>
-    <text x="20" y="22" fill="#34d399" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="13">Processing &amp; Intelligence Core</text>
+  <!-- LAYER 3: DOMAIN SERVICES & BATCH INGESTION -->
+  <g transform="translate(40, 425)" filter="url(#shadow)">
+    <rect width="980" height="115" rx="12" fill="#1e293b" stroke="#10b981" stroke-width="1.5"/>
+    <text x="20" y="22" fill="#34d399" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="13">Layer 3: Processing &amp; Domain Services (services.py, batch_processor.py, rag_service.py)</text>
 
-    <!-- ML Module -->
-    <g transform="translate(15, 32)">
-      <rect width="270" height="60" rx="8" fill="#0f172a" stroke="#065f46" stroke-width="1"/>
-      <text x="15" y="22" fill="#34d399" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">ml_models.py (Scikit-Learn)</text>
-      <text x="15" y="42" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="11">scaler.pkl | flag.pkl | freight.pkl</text>
-    </g>
+    <!-- Services Core -->
+    <g transform="translate(18, 34)">
+      <!-- Shared Services -->
+      <rect width="280" height="68" rx="8" fill="#0f172a" stroke="#065f46" stroke-width="1"/>
+      <text x="14" y="22" fill="#34d399" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">services.py (Unified Orchestration)</text>
+      <text x="14" y="42" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="11">score_and_save_invoice()</text>
+      <text x="14" y="58" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="10">Shared logic for manual &amp; batch runs</text>
 
-    <!-- Batch Module -->
-    <g transform="translate(300, 32)">
-      <rect width="320" height="60" rx="8" fill="#0f172a" stroke="#854d0e" stroke-width="1"/>
-      <text x="15" y="22" fill="#fbbf24" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">batch_processor.py Engine</text>
-      <text x="15" y="42" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="11">SHA256 Hash Dedup | PO Match | Error Log</text>
-    </g>
+      <!-- Batch Processor -->
+      <rect x="296" width="370" height="68" rx="8" fill="#0f172a" stroke="#854d0e" stroke-width="1"/>
+      <text x="310" y="22" fill="#fbbf24" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">batch_processor.py Engine</text>
+      <text x="310" y="42" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="11">SHA-256 Deduplication | 100-Row Chunking</text>
+      <text x="310" y="58" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="10">Bulk PO Catalog Lookup | batch_row_errors Isolation</text>
 
-    <!-- RAG Module -->
-    <g transform="translate(635, 32)">
-      <rect width="270" height="60" rx="8" fill="#0f172a" stroke="#581c87" stroke-width="1"/>
-      <text x="15" y="22" fill="#c084fc" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">rag_service.py</text>
-      <text x="15" y="42" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="11">SQL Analytics &amp; Natural Language</text>
+      <!-- RAG SQL Analytics -->
+      <rect x="682" width="280" height="68" rx="8" fill="#0f172a" stroke="#581c87" stroke-width="1"/>
+      <text x="696" y="22" fill="#c084fc" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">rag_service.py Analytics Engine</text>
+      <text x="696" y="42" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="11">17 Fixed SQL Queries | In-Memory Regex</text>
+      <text x="696" y="58" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="10">Low-Sample Guard (&lt;5 invoices) | &lt;15ms latency</text>
     </g>
   </g>
 
-  <!-- Connectors from Services to Database -->
-  <path d="M 300 555 L 300 585" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow)"/>
-  <path d="M 700 555 L 700 585" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow)"/>
-  <text x="500" y="575" text-anchor="middle" fill="#38bdf8" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">SQLAlchemy ORM (database.py / models_db.py)</text>
+  <!-- Connectors Layer 3 -> Layer 4 (ML & DB) -->
+  <path d="M 160 540 L 160 572" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-emerald)"/>
+  <path d="M 480 540 L 480 572" stroke="#10b981" stroke-width="2" marker-end="url(#arrow-emerald)"/>
+  <path d="M 820 540 L 820 670" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow-sky)"/>
 
-  <!-- LAYER 4: DATABASE & PERSISTENCE LAYER -->
-  <g transform="translate(40, 590)" filter="url(#shadow)">
-    <rect width="920" height="70" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+  <!-- LAYER 4A: ML INTELLIGENCE CORE -->
+  <g transform="translate(40, 575)" filter="url(#shadow)">
+    <rect width="660" height="80" rx="12" fill="#1e293b" stroke="#059669" stroke-width="1.5"/>
+    <text x="20" y="22" fill="#34d399" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">Machine Learning Intelligence Core (app/ml_models.py — In-Memory Joblib Singletons)</text>
     
+    <g transform="translate(18, 32)">
+      <rect width="195" height="38" rx="6" fill="#0f172a" stroke="#047857" stroke-width="1"/>
+      <text x="97" y="16" text-anchor="middle" fill="#6ee7b7" font-family="monospace" font-size="11">scaler.pkl</text>
+      <text x="97" y="30" text-anchor="middle" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="10">StandardScaler (5 features)</text>
+
+      <rect x="205" width="225" height="38" rx="6" fill="#0f172a" stroke="#047857" stroke-width="1"/>
+      <text x="317" y="16" text-anchor="middle" fill="#6ee7b7" font-family="monospace" font-size="11">predict_flag_invoice.pkl</text>
+      <text x="317" y="30" text-anchor="middle" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="10">RandomForest (300 Trees)</text>
+
+      <rect x="440" width="202" height="38" rx="6" fill="#0f172a" stroke="#047857" stroke-width="1"/>
+      <text x="541" y="16" text-anchor="middle" fill="#6ee7b7" font-family="monospace" font-size="11">predict_freight_model.pkl</text>
+      <text x="541" y="30" text-anchor="middle" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="10">LinearRegression OLS</text>
+    </g>
+  </g>
+
+  <!-- Connectors to Persistence -->
+  <path d="M 370 655 L 370 675" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow-sky)"/>
+  <text x="530" y="668" text-anchor="middle" fill="#38bdf8" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold">SQLAlchemy 2.0 ORM Session Lifecycle (database.py / models_db.py)</text>
+
+  <!-- LAYER 4B: RESILIENT DUAL-DATABASE PERSISTENCE LAYER -->
+  <g transform="translate(40, 680)" filter="url(#shadow)">
+    <rect width="980" height="78" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="20" y="20" fill="#38bdf8" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">Layer 4: Dual-Database Storage Layer (Zero-Downtime Automatic Standby Failover)</text>
+
     <!-- Primary DB -->
-    <g transform="translate(20, 12)">
-      <rect width="420" height="46" rx="8" fill="#1e293b" stroke="#0284c7" stroke-width="1"/>
-      <circle cx="30" cy="23" r="12" fill="#0284c7"/>
-      <text x="30" y="27" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">PG</text>
-      <text x="55" y="20" fill="#f0f9ff" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="13">PostgreSQL Database (Primary Production)</text>
-      <text x="55" y="36" fill="#7dd3fc" font-family="system-ui, -apple-system, sans-serif" font-size="11">Host: localhost:5432 | DB: vendor_intelligence</text>
+    <g transform="translate(18, 28)">
+      <rect width="455" height="42" rx="8" fill="#1e293b" stroke="#0284c7" stroke-width="1"/>
+      <circle cx="25" cy="21" r="11" fill="#0284c7"/>
+      <text x="25" y="25" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="11">PG</text>
+      <text x="46" y="18" fill="#f0f9ff" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">PostgreSQL Database (Primary Production Cluster)</text>
+      <text x="46" y="34" fill="#7dd3fc" font-family="system-ui, -apple-system, sans-serif" font-size="10">Host: localhost:5432 | DB: vendor_intelligence | Pool Pre-Ping</text>
     </g>
 
-    <!-- Fallback DB -->
-    <g transform="translate(480, 12)">
-      <rect width="420" height="46" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="1"/>
-      <circle cx="30" cy="23" r="12" fill="#d97706"/>
-      <text x="30" y="27" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="10">SQL</text>
-      <text x="55" y="20" fill="#fffbeb" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="13">SQLite Database (Automatic Standby Fallback)</text>
-      <text x="55" y="36" fill="#fde68a" font-family="system-ui, -apple-system, sans-serif" font-size="11">File: backend/vendor_intelligence.db</text>
+    <!-- Failover Arrow -->
+    <path d="M 485 49 L 515 49" stroke="#f59e0b" stroke-width="2" stroke-dasharray="3 3" marker-end="url(#arrow)"/>
+
+    <!-- Standby Fallback DB -->
+    <g transform="translate(525, 28)">
+      <rect width="437" height="42" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="1"/>
+      <circle cx="25" cy="21" r="11" fill="#d97706"/>
+      <text x="25" y="25" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="9">SQL</text>
+      <text x="46" y="18" fill="#fffbeb" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="12">SQLite Database (Automatic Standby Fallback)</text>
+      <text x="46" y="34" fill="#fde68a" font-family="system-ui, -apple-system, sans-serif" font-size="10">File: backend/vendor_intelligence.db | check_same_thread=False</text>
     </g>
   </g>
 </svg>

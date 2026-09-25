@@ -30,16 +30,17 @@ The overall system architecture follows a decoupled 4-layer design (Presentation
 
 ```mermaid
 flowchart TD
-    subgraph Client ["🌐 Presentation Layer (Browser UI)"]
+    subgraph Client ["🌐 Presentation Layer (Manifest Desk UI)"]
         UI_INV["Invoice Risk Form"]
         UI_FRT["Freight Cost Form"]
         UI_BAT["CSV Batch Upload UI"]
-        UI_RAG["AI Assistant & Analytics UI"]
+        UI_RAG["SQL Analytics Assistant UI"]
+        UI_HIST["Audit History & Multi-Factor Filters"]
     end
 
-    subgraph Backend ["⚡ API & Gateway Layer (FastAPI Server)"]
+    subgraph Gateway ["⚡ API & Gateway Layer (FastAPI ASGI Server)"]
         CORS["CORS Middleware & Static Mount"]
-        PYD["Pydantic Validation (schemas.py)"]
+        PYD["Pydantic v2 Contracts (schemas.py)"]
         subgraph Routers ["API Routers (routers/)"]
             R_INV["invoice.py (/api/invoice/*)"]
             R_FRT["freight.py (/api/freight/*)"]
@@ -48,46 +49,51 @@ flowchart TD
         end
     end
 
-    subgraph Core ["🧠 Processing & Intelligence Layer"]
-        ML["ml_models.py (Scikit-Learn Core)"]
+    subgraph Services ["⚙️ Domain Services Layer"]
+        SVC["services.py (Unified Scoring & Orchestration)"]
+        BATCH_PROC["batch_processor.py Engine\n(SHA-256 Dedup, 100-Row Chunking & Error Isolation)"]
+        RAG_SVC["rag_service.py\n(17 Deterministic SQL Queries & Sample Guards)"]
+    end
+
+    subgraph Core ["🧠 ML Intelligence Layer (ml_models.py)"]
         SCALER["scaler.pkl (StandardScaler)"]
-        RF_MODEL["predict_flag_invoice.pkl (RandomForest)"]
-        LR_MODEL["predict_freight_model.pkl (LinearRegression)"]
-        BATCH_PROC["batch_processor.py Engine\n(Dedup SHA256 & PO Lookup)"]
-        RAG_SVC["rag_service.py (Analytics & LLM)"]
+        RF_MODEL["predict_flag_invoice.pkl (RandomForest - 300 Trees)"]
+        LR_MODEL["predict_freight_model.pkl (LinearRegression OLS)"]
     end
 
-    subgraph DB ["🗄️ Persistence Layer (database.py)"]
+    subgraph DB ["🗄️ Persistence Layer (database.py & models_db.py)"]
         PG[("PostgreSQL Database\n(Primary Production)")]
-        SQLITE[("SQLite Database\n(Auto-Failover Standby)")]
+        SQLITE[("SQLite Database\n(Automatic Zero-Downtime Standby)")]
     end
 
-    Client -->|HTTP REST / JSON / Multipart CSV| CORS
+    Client -->|HTTP REST / Multipart CSV| CORS
     CORS --> PYD
     PYD --> Routers
-    R_INV --> ML
-    R_FRT --> ML
+    R_INV --> SVC
+    R_FRT --> SVC
     R_BAT --> BATCH_PROC
     R_RAG --> RAG_SVC
 
-    ML --> SCALER
-    ML --> RF_MODEL
-    ML --> LR_MODEL
-    BATCH_PROC --> ML
+    SVC --> Core
+    BATCH_PROC --> Core
+    Core --> SCALER
+    Core --> RF_MODEL
+    Core --> LR_MODEL
 
-    ML -->|SQLAlchemy ORM| PG
-    BATCH_PROC -->|SQLAlchemy ORM| PG
-    RAG_SVC -->|SQLAlchemy ORM| PG
+    SVC -->|SQLAlchemy 2.0| PG
+    BATCH_PROC -->|SQLAlchemy 2.0| PG
+    RAG_SVC -->|SQLAlchemy 2.0| PG
 
     PG -.-|Auto-Failover if offline| SQLITE
 ```
 </details>
 
 #### Key Connectivity Highlights:
-- **Presentation Layer**: A lightweight Vanilla HTML5/JS/CSS frontend requiring no complex node build tools, served directly by FastAPI via `StaticFiles` mounting.
-- **FastAPI API Gateway**: Implements modular routers (`routers/invoice.py`, `routers/freight.py`, `routers/batches.py`, `routers/rag.py`), strictly validating payloads using Pydantic (`schemas.py`).
-- **Intelligence Core**: Encapsulates model execution in `ml_models.py` for single predictions, and offloads heavy CSV ingestion to `batch_processor.py` for streaming batch execution.
-- **Resilient Dual Storage**: Connected via SQLAlchemy ORM. If PostgreSQL is unbonded or unreachable, the system gracefully falls back to a local SQLite database (`vendor_intelligence.db`) without crashing.
+- **Presentation Layer**: A lightweight Vanilla HTML5/JS/CSS single-page Manifest Desk served directly by FastAPI via `StaticFiles` mounting.
+- **FastAPI API Gateway**: Implements modular routers (`routers/invoice.py`, `routers/freight.py`, `routers/batches.py`, `routers/rag.py`), strictly validating payloads using Pydantic v2 (`schemas.py`).
+- **Domain Services & Batch Engine**: Shared business logic in `services.py`, streaming batch ingestion in `batch_processor.py` with whole-file SHA-256 deduplication and 100-row chunking, and an ultra-fast 17-query deterministic SQL analytics engine in `rag_service.py`.
+- **Intelligence Core**: In-memory Joblib singletons in `ml_models.py` executing 300-tree Random Forest inference and OLS freight baselining in sub-2ms.
+- **Resilient Dual Storage**: Connected via SQLAlchemy 2.0 ORM. If PostgreSQL is unbonded or unreachable, the system gracefully falls back to a local SQLite database (`vendor_intelligence.db`) without crashing.
 
 ---
 
