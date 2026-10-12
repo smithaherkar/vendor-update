@@ -61,16 +61,36 @@ SUPPORTED_MENU_TEXT = """I can answer questions from our 17 supported analytics 
 # 1. 17 HIGH-PERFORMANCE SQL QUERY FUNCTIONS
 # =====================================================================
 
+def _vendor_candidates(v: str) -> list[str]:
+    """
+    Generates candidate matching variations for a vendor string.
+    Supports both raw numerical IDs ('2010') and prefixed IDs ('VND-2010', 'VND_2010').
+    """
+    v_clean = v.strip().upper()
+    candidates = [v_clean]
+    stripped = re.sub(r"^VND[-_ ]*", "", v_clean)
+    if stripped and stripped not in candidates:
+        candidates.append(stripped)
+    prefixed = f"VND-{stripped}" if stripped else f"VND-{v_clean}"
+    if prefixed not in candidates:
+        candidates.append(prefixed)
+    prefixed_underscore = f"VND_{stripped}" if stripped else f"VND_{v_clean}"
+    if prefixed_underscore not in candidates:
+        candidates.append(prefixed_underscore)
+    return candidates
+
+
 def get_vendor_flag_stats(db: Session, vendor_number: str) -> dict[str, Any]:
     """1. Flag count and flag rate for a specific vendor."""
-    v_clean = vendor_number.strip().upper()
+    cands = _vendor_candidates(vendor_number)
     records = db.query(models_db.InvoicePrediction).filter(
-        func.upper(models_db.InvoicePrediction.vendor_number) == v_clean
+        func.upper(models_db.InvoicePrediction.vendor_number).in_(cands)
     ).all()
 
     total = len(records)
+    matched_name = records[0].vendor_number if total > 0 else vendor_number.strip()
     if total == 0:
-        return {"found": False, "vendor_number": v_clean, "total_invoices": 0}
+        return {"found": False, "vendor_number": matched_name, "total_invoices": 0}
 
     flagged = sum(1 for r in records if r.predicted_flag == 1)
     cleared = total - flagged
@@ -78,7 +98,7 @@ def get_vendor_flag_stats(db: Session, vendor_number: str) -> dict[str, Any]:
 
     return {
         "found": True,
-        "vendor_number": v_clean,
+        "vendor_number": matched_name,
         "total_invoices": total,
         "flagged_count": flagged,
         "cleared_count": cleared,
@@ -364,15 +384,16 @@ def get_highest_freight_ratio_invoice(db: Session) -> Optional[dict[str, Any]]:
 
 def get_vendor_mismatch_stats(db: Session, vendor_number: str) -> dict[str, Any]:
     """12. Average dollar mismatch (invoice_dollars vs total_item_dollars) for a specific vendor."""
-    v_clean = vendor_number.strip().upper()
+    cands = _vendor_candidates(vendor_number)
     records = (
         db.query(models_db.InvoicePrediction)
-        .filter(func.upper(models_db.InvoicePrediction.vendor_number) == v_clean)
+        .filter(func.upper(models_db.InvoicePrediction.vendor_number).in_(cands))
         .all()
     )
     total = len(records)
+    matched_name = records[0].vendor_number if total > 0 else vendor_number.strip()
     if total == 0:
-        return {"found": False, "vendor_number": v_clean, "total_invoices": 0}
+        return {"found": False, "vendor_number": matched_name, "total_invoices": 0}
 
     mismatches = [abs(r.invoice_dollars - r.total_item_dollars) for r in records]
     avg_m = sum(mismatches) / total
@@ -380,7 +401,7 @@ def get_vendor_mismatch_stats(db: Session, vendor_number: str) -> dict[str, Any]
 
     return {
         "found": True,
-        "vendor_number": v_clean,
+        "vendor_number": matched_name,
         "total_invoices": total,
         "avg_mismatch_dollars": round(avg_m, 2),
         "max_mismatch_dollars": round(max_m, 2),
@@ -444,16 +465,17 @@ def get_largest_mismatch_invoice(db: Session) -> Optional[dict[str, Any]]:
 
 def get_vendor_invoice_count(db: Session, vendor_number: str) -> dict[str, Any]:
     """15. How many invoices are on record for a specific vendor."""
-    v_clean = vendor_number.strip().upper()
-    count = (
-        db.query(func.count(models_db.InvoicePrediction.id))
-        .filter(func.upper(models_db.InvoicePrediction.vendor_number) == v_clean)
-        .scalar()
-        or 0
+    cands = _vendor_candidates(vendor_number)
+    records = (
+        db.query(models_db.InvoicePrediction.vendor_number)
+        .filter(func.upper(models_db.InvoicePrediction.vendor_number).in_(cands))
+        .all()
     )
+    count = len(records)
+    matched_name = records[0][0] if count > 0 else vendor_number.strip()
 
     return {
-        "vendor_number": v_clean,
+        "vendor_number": matched_name,
         "invoice_count": count,
         "is_low_sample": count < LOW_SAMPLE_THRESHOLD,
     }
@@ -488,19 +510,18 @@ def get_low_history_vendors(db: Session, threshold: int = LOW_SAMPLE_THRESHOLD, 
 
 def compare_two_vendors(db: Session, vendor_a: str, vendor_b: str) -> dict[str, Any]:
     """17. Two named vendors compared side by side on flag rate, average freight, average mismatch, and invoice count."""
-    va_clean = vendor_a.strip().upper()
-    vb_clean = vendor_b.strip().upper()
-
     def _stats(v: str) -> dict[str, Any]:
+        cands = _vendor_candidates(v)
         records = (
             db.query(models_db.InvoicePrediction)
-            .filter(func.upper(models_db.InvoicePrediction.vendor_number) == v)
+            .filter(func.upper(models_db.InvoicePrediction.vendor_number).in_(cands))
             .all()
         )
         total = len(records)
+        display_name = records[0].vendor_number if total > 0 else v.strip()
         if total == 0:
             return {
-                "vendor_number": v,
+                "vendor_number": display_name,
                 "found": False,
                 "total_invoices": 0,
                 "flagged_count": 0,
@@ -517,7 +538,7 @@ def compare_two_vendors(db: Session, vendor_a: str, vendor_b: str) -> dict[str, 
         avg_mismatch = sum(abs(r.invoice_dollars - r.total_item_dollars) for r in records) / total
 
         return {
-            "vendor_number": v,
+            "vendor_number": display_name,
             "found": True,
             "total_invoices": total,
             "flagged_count": flagged,
@@ -529,8 +550,8 @@ def compare_two_vendors(db: Session, vendor_a: str, vendor_b: str) -> dict[str, 
         }
 
     return {
-        "vendor_a": _stats(va_clean),
-        "vendor_b": _stats(vb_clean),
+        "vendor_a": _stats(vendor_a),
+        "vendor_b": _stats(vendor_b),
     }
 
 
@@ -539,18 +560,42 @@ def compare_two_vendors(db: Session, vendor_a: str, vendor_b: str) -> dict[str, 
 # =====================================================================
 
 def _extract_vendors_from_text(text: str) -> list[str]:
-    """Extract vendor tokens (e.g. VND-1001, VND_200, Vendor 10, V1002)."""
-    tokens = re.findall(r"\b(?:VND|V|VENDOR)[-_ ]?([A-Za-z0-9]+)\b", text, re.IGNORECASE)
-    cleaned = []
-    for t in tokens:
-        full = f"VND-{t.upper()}" if not t.upper().startswith("VND") else t.upper()
-        if full not in cleaned:
-            cleaned.append(full)
-    standalone = re.findall(r"\bvendor\s+(\d+)\b", text, re.IGNORECASE)
-    for s in standalone:
-        full = f"VND-{s}"
-        if full not in cleaned:
-            cleaned.append(full)
+    """Extract vendor tokens (e.g. 2010, 2006, VND-1001, Vendor 10, V1002)."""
+    raw_tokens: list[str] = []
+
+    def _add(tok: str):
+        if not tok:
+            return
+        t = tok.strip().upper()
+        t = re.sub(r"^VNDC[-_ ]*", "", t)
+        if t and t not in raw_tokens:
+            raw_tokens.append(t)
+
+    # 1. Standard prefixed tokens (e.g. VND-1001, VND_1002)
+    explicit_prefixed = re.findall(r"\b(VND[-_][A-Za-z0-9]+)\b", text, re.IGNORECASE)
+    for m in explicit_prefixed:
+        _add(m)
+
+    # 2. Keyword-prefixed tokens (e.g. VND 2010, VENDOR 2006, VNDC2006)
+    kw_matches = re.findall(r"\b(?:VND|VENDOR|VNDC)[-_ ]*([A-Za-z0-9]+)\b", text, re.IGNORECASE)
+    for m in kw_matches:
+        _add(m)
+
+    # 3. Numeric IDs (3-6 digits) when in vendor or comparison context
+    is_compare_context = bool(re.search(r"\b(?:compare|comparison|versus|vs|between)\b", text, re.IGNORECASE))
+    is_vendor_context = bool(re.search(r"\b(?:vendor|vendors|invoices?|risk|flag|mismatch|spend)\b", text, re.IGNORECASE))
+    if is_compare_context or is_vendor_context or len(raw_tokens) < 2:
+        num_tokens = re.findall(r"\b(\d{3,6})\b", text)
+        for n in num_tokens:
+            _add(n)
+
+    # Deduplicate canonical forms (e.g. if both 'VND-1001' and '1001' are extracted, keep 'VND-1001')
+    cleaned: list[str] = []
+    for v in raw_tokens:
+        raw_num = re.sub(r"^VND[-_ ]*", "", v)
+        if not any(raw_num == re.sub(r"^VND[-_ ]*", "", existing) for existing in cleaned):
+            cleaned.append(v)
+
     return cleaned
 
 
@@ -583,13 +628,14 @@ def classify_intent(message: str) -> tuple[str, dict[str, Any]]:
     # ------------------------------------------------------------------ #
     #  UNSUPPORTED: Delay / delivery (not in dataset)                     #
     # ------------------------------------------------------------------ #
-    if has_any("delay", "delays", "delayed", "late") and has_any("delivery", "shipping", "transit") or        phrase("on-time") or phrase("lead time") or phrase("transit time") or phrase("days late"):
+    if has_any("delay", "delays", "delayed", "late") and has_any("delivery", "shipping", "transit") or \
+       phrase("on-time") or phrase("lead time") or phrase("transit time") or phrase("days late"):
         return "UNSUPPORTED_DELAY", {}
 
     # ------------------------------------------------------------------ #
     #  Q17: Compare two vendors                                           #
     # ------------------------------------------------------------------ #
-    if (len(vendors) >= 2 and has_any("compare", "vs", "versus", "between", "comparison")) or        ("compare" in tokens and len(vendors) == 2):
+    if (len(vendors) >= 2 and (has_any("compare", "vs", "versus", "between", "comparison") or "compare" in tokens)):
         return "Q17_COMPARE_VENDORS", {"vendor_a": vendors[0], "vendor_b": vendors[1]}
 
     # ------------------------------------------------------------------ #

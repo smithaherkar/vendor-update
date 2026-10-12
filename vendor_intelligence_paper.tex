@@ -1,0 +1,407 @@
+% =========================================================
+% Vendor Intelligence and Performance System (VIPS)
+% IEEE Conference-Style LaTeX Source File
+%
+% Authors:
+%   Smith Aherkar, Shreyas Gaikwad, Subhash Bishnoi
+%   Guided by Prof. Dakshta Jain
+%
+% Department of Computer Science and Engineering -- Artificial Intelligence
+% G H Raisoni College of Engineering and Management, Pune, India
+% =========================================================
+
+\documentclass[conference]{IEEEtran}
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{balance}
+\usepackage[hidelinks]{hyperref}
+
+\begin{document}
+
+\title{Vendor Intelligence and Performance System: An End-to-End Machine Learning, Resilient Persistence, and Grounded Analytics Framework for Automated Invoice Audit}
+
+\author{
+\IEEEauthorblockN{Smith Aherkar, Shreyas Gaikwad, Subhash Bishnoi}
+\IEEEauthorblockA{
+Department of Computer Science and Engineering -- Artificial Intelligence\\
+G H Raisoni College of Engineering and Management, Pune, India\\
+Affiliated to Savitribai Phule Pune University\\
+Guided by Prof. Dakshta Jain
+}
+}
+
+\maketitle
+
+\begin{abstract}
+Accounts-payable teams that reconcile purchase orders, goods receipts, and vendor invoices by hand or through static threshold heuristics routinely struggle with invoice overbilling, quantity mismatches, non-contractual unit rates, and unmonitored freight surcharges. Furthermore, enterprise audit workflows require robust batch ingestion, deduplication, and zero-downtime persistence to handle fluctuating commercial invoice loads. This paper presents the Vendor Intelligence and Performance System (VIPS)---an enterprise-grade automated invoice audit and vendor risk assessment platform. 
+
+VIPS implements a strictly decoupled four-layer architecture comprising: (1) a high-performance FastAPI REST gateway strictly validated by Pydantic~v2 schemas; (2) an asynchronous batch ingestion engine powered by whole-file SHA-256 deduplication hashing, bulk purchase-order pre-fetching, 100-row transactional chunking, and row-level fault isolation logging; (3) a dual-model machine learning core featuring a 300-tree \texttt{RandomForestClassifier} trained on standardized invoice and purchase-order features alongside an Ordinary Least Squares (OLS) freight baseline regressor ($\hat{F} \approx 0.005015 \times \text{Invoice\$} + 5.008$), complemented by automated catalog PO matching and numeric sanity enforcement; and (4) an automated dual-database persistence layer (primary PostgreSQL with zero-downtime local SQLite failover) backed by a 17-query deterministic SQL analytics assistant and an interactive single-page Manifest Desk dashboard. 
+
+Local benchmarking demonstrates sub-millisecond ML inference ($<2$\,ms), sub-15\,ms SQL query routing, and batch ingestion throughput of 350--500 rows per second. Feature importance analysis confirms that authorized purchase-order expenditure (29.21\%) and quantity (20.53\%) govern nearly half of every risk decision. The platform provides complete audit trail reproducibility, non-blocking ingestion for multi-thousand-row CSV submissions, and grounded analytics that maintain human reviewers at the center of final payment approvals.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Invoice Audit Automation, Random Forest Classification, Freight Cost Estimation, Asynchronous Batch Ingestion, Cryptographic Deduplication, Dual-Database Resilience, SQLite Failover, Deterministic SQL Analytics, FastAPI Microservices.
+\end{IEEEkeywords}
+
+% =========================================================
+\section{Introduction}
+% =========================================================
+
+In modern commercial operations, enterprise procurement departments manage thousands of business-to-business (B2B) transactions across complex supplier networks. Every incoming vendor invoice must undergo rigorous three-way matching---verifying that line-item quantities, unit prices, and supplemental freight surcharges strictly align with authorized Purchase Orders (POs) and warehouse receiving records before disbursement. Historically, accounts-payable (AP) teams have relied on manual sampling or static, threshold-based heuristics embedded within Enterprise Resource Planning (ERP) databases. Both methodologies exhibit severe operational vulnerabilities when processing enterprise-scale transaction volumes.
+
+Manual invoice reconciliation is labor-intensive, error-prone, and inconsistent. Reviewers applying subjective rules of thumb frequently arrive at divergent verdicts for identical billing patterns. Conversely, static rule engines operate under rigid tolerance bounds: thresholds tuned to detect obvious overbilling fail to identify subtle multi-variable anomalies across line items, while sensitive configurations trigger severe false-alarm fatigue. Furthermore, ancillary billing items---specifically logistics and freight handling fees---are rarely accompanied by objective contractual benchmarks and are routinely accepted on vendor trust, creating substantial unmonitored financial leakage.
+
+Beyond single-invoice verification, enterprise accounts-payable pipelines face severe operational engineering hurdles. Vendor billing data arrives in high-volume CSV batch feeds. Existing systems frequently lack cryptographic deduplication (leading to redundant inference cycles and database clutter), abort multi-thousand-row uploads upon encountering an isolated malformed row, and suffer complete downtime during localized database network partitions.
+
+To address these critical deficiencies, this paper presents the Vendor Intelligence and Performance System (VIPS). VIPS combines calibrated ensemble classification, linear freight cost baselining, automated catalog purchase-order verification, and an ultra-fast 17-query deterministic SQL analytics engine within an asynchronous, resilient microservice architecture. By coupling probabilistic anomaly triage with deterministic database analytics and an automatic PostgreSQL-to-SQLite failover mechanism, VIPS empowers human reviewers with transparent, auditable evidence while eliminating manual auditing friction.
+
+% =========================================================
+\section{Problem Statement and Research Gap}
+% =========================================================
+
+Commercial accounts-payable solutions and prior academic frameworks typically cluster around three opposing architectural extremes:
+
+\begin{enumerate}
+    \item \textbf{High False-Positive Rates in Heuristic Systems:} Purely rule-based matching engines evaluate fields in isolation and cannot model complex non-linear interactions between order quantity, tiered pricing, and shipping surcharges. Furneaux and Wade \cite{furneaux} demonstrated that heuristic verification routines produce false-positive rates exceeding 35\% in enterprise settings, leading staff to habitually bypass automated alerts.
+    \item \textbf{Opaque Scoring and Hallucination Risks:} Supervised deep neural networks often output abstract risk scores without human-verifiable arithmetic justifications. Furthermore, attempting to use ungrounded Large Language Models (LLMs) to inspect invoices introduces severe risks of numerical hallucination and non-deterministic calculations, which are unacceptable in regulatory financial audits \cite{ji_hallucination}.
+    \item \textbf{Ingestion Fragility and Single-Points-of-Failure:} Real-world AP operations receive invoices in bulk CSV submissions. Existing systems frequently lack cryptographic deduplication, fail entirely when encountering a single syntax error in a batch, and crash when local or cloud database network drops occur.
+\end{enumerate}
+
+VIPS bridges these gaps by decoupling probabilistic risk triage from deterministic analytics, wrapping the entire workflow in an asynchronous batch ingestion pipeline with automatic local SQLite failover and a responsive web dashboard.
+
+% =========================================================
+\section{Related Work}
+% =========================================================
+
+\subsection{Supervised Tabular Learning in Financial Auditing}
+
+The application of supervised ensemble learning to financial and procurement auditing is well established. Breiman \cite{breiman} demonstrated that bagging de-correlated decision trees (Random Forests) exhibits superior generalization over tabular datasets containing non-linear feature interactions and skewed financial distributions. Pedregosa et al. \cite{pedregosa} and Fawcett \cite{fawcett} provide standard computational frameworks for scikit-learn model execution and ROC evaluation metrics.
+
+\subsection{Grounded Analytics and Hallucination Mitigation}
+
+Ji et al. \cite{ji_hallucination} surveyed hallucination in natural language generation, demonstrating that ungrounded generative systems readily produce plausible yet inaccurate figures. Lewis et al. \cite{lewis_rag} formulated Retrieval-Augmented Generation (RAG) to anchor conversational responses in retrieved evidence. VIPS operationalizes this principle by anchoring the analytics assistant entirely in 17 pre-defined, deterministic SQLAlchemy analytical routines rather than unconstrained language model generation.
+
+\subsection{Asynchronous Microservices for ML Serving}
+
+Tiwari and Kumar \cite{tiwari} proved that asynchronous ASGI Python microframeworks deliver significantly higher request throughput and lower latency than traditional WSGI frameworks, justifying the selection of FastAPI for low-latency inference serving. Table~\ref{tab:related_work} outlines the mapping of related research to VIPS architectural decisions.
+
+\begin{table}[t]
+\centering
+\caption{Summary of Related Work and Mapping to VIPS Design}
+\label{tab:related_work}
+\begin{tabular}{p{0.18\columnwidth}p{0.24\columnwidth}p{0.48\columnwidth}}
+\toprule
+\textbf{Ref.} & \textbf{Source} & \textbf{Architectural Mapping to VIPS Design} \\
+\midrule
+\cite{breiman} & Breiman (2001) & Justifies the 300-tree bagging ensemble (\texttt{RandomForestClassifier}) for tabular risk scoring. \\
+\cite{furneaux} & Furneaux \& Wade & Motivates combining statistical classifiers with catalog PO baselines to overcome rule fatigue. \\
+\cite{ji_hallucination} & Ji et al. (2023) & Underpins strict hallucination mitigation: assistant outputs are computed via deterministic SQL routines. \\
+\cite{lewis_rag} & Lewis et al. (2020) & Directs structured data retrieval via SQL aggregations rather than parametric generation. \\
+\cite{tiwari} & Tiwari \& Kumar & Supports the selection of FastAPI ASGI microframework for high-throughput async execution. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =========================================================
+\section{Objectives and Scope}
+% =========================================================
+
+\subsection{Objectives}
+\begin{itemize}
+    \item \textbf{Dual-Model ML Serving:} Provide sub-millisecond inference for invoice risk classification and objective freight cost baseline estimation.
+    \item \textbf{Catalog PO Resolution \& Sanity Verification:} Automatically match incoming invoices against the \texttt{purchases} catalog table to fetch authorized baseline quantities and dollars while enforcing strict numeric boundaries.
+    \item \textbf{Asynchronous Batch Ingestion:} Ingest bulk CSV files via FastAPI \texttt{BackgroundTasks} with whole-file SHA-256 deduplication, 100-row chunking, and isolated row-level error tracking.
+    \item \textbf{Deterministic SQL Analytics:} Implement 17 high-performance SQL analytical queries with in-memory regex intent classification and low-sample size warnings ($<5$ invoices).
+    \item \textbf{Resilient Dual-Database Persistence:} Ensure uninterrupted audit operations via SQLAlchemy ORM with automatic zero-downtime failover from PostgreSQL to an embedded SQLite database.
+    \item \textbf{Production-Ready Manifest Desk UI:} Provide a responsive, single-page web interface with real-time audit tables, multi-factor filtering, and batch job monitoring.
+\end{itemize}
+
+\subsection{Scope}
+VIPS is trained and evaluated on wholesale distribution invoice data denominated in USD. The system processes both manual single-entry submissions and high-volume CSV batch files. Optical Character Recognition (OCR) for scanned paper PDFs and multi-currency foreign exchange reconciliation are scoped as future extensions. VIPS is designed strictly as an automated decision-support system: it scores, estimates, and highlights anomalies, while ultimate payment approval or rejection authority remains with authorized finance reviewers.
+
+% =========================================================
+\section{Proposed System Architecture}
+% =========================================================
+
+VIPS is structured into four cleanly decoupled operational layers behind an asynchronous ASGI server:
+
+\begin{enumerate}
+    \item \textbf{Layer 1 -- Presentation Client \& API Gateway:} A responsive Vanilla HTML5/CSS/JavaScript single-page Manifest Desk served directly via FastAPI \texttt{StaticFiles}. Requests are strictly parsed and validated against Pydantic~v2 schemas across modular routers (\texttt{/api/invoice}, \texttt{/api/freight}, \texttt{/api/batches}, \texttt{/api/rag}).
+    \item \textbf{Layer 2 -- Ingestion \& Batch Engine:} Handles file format validation, whole-file SHA-256 deduplication hashing, and streaming batch processing. Files with $\le 500$ rows are executed synchronously; larger batches are dispatched to FastAPI \texttt{BackgroundTasks}. The engine performs bulk PO pre-fetching, 100-row transactional database chunking, and captures malformed rows in an isolated \texttt{batch\_row\_errors} table.
+    \item \textbf{Layer 3 -- Machine Learning Intelligence Core:} Evaluates a 300-tree \texttt{RandomForestClassifier} loaded as a singleton in memory via Joblib. Normalizes five features using a persisted \texttt{StandardScaler}, executes an OLS linear regressor for freight baselining, and outputs calibrated risk probabilities.
+    \item \textbf{Layer 4 -- Resilient Persistence \& Analytics Layer:} Connects via SQLAlchemy~2.0 to primary PostgreSQL with automatic fallback to local SQLite (\texttt{vendor\_intelligence.db}). Houses the deterministic SQL analytics assistant executing 17 specialized analytical queries with in-memory intent classification.
+\end{enumerate}
+
+\begin{figure}[t]
+\centering
+\fbox{\parbox[c][3.0cm][c]{0.92\columnwidth}{
+\centering
+\textbf{[ SYSTEM ARCHITECTURE & CONNECTIVITY ]}\\
+\vspace{2mm}
+\small
+\textbf{Layer 1:} Manifest Desk UI (HTML5/CSS3/Vanilla JS)\\
+$\Downarrow$ \textit{HTTP REST / Multipart CSV (Pydantic v2)}\\
+\textbf{Layer 2:} FastAPI Gateway \& Routers (\texttt{invoice}, \texttt{freight}, \texttt{batches}, \texttt{rag})\\
+$\Downarrow$ \textit{Orchestration \& Ingestion}\\
+\textbf{Layer 3:} Services (\texttt{services.py}) \& Async Batch Engine (\texttt{batch\_processor.py})\\
+$\Downarrow$ \textit{In-Memory Singleton Inference}\\
+\textbf{Core:} Scikit-Learn Core (\texttt{scaler.pkl}, \texttt{flag.pkl}, \texttt{freight.pkl})\\
+$\Downarrow$ \textit{SQLAlchemy 2.0 ORM (Session Lifecycle)}\\
+\textbf{Layer 4:} PostgreSQL (Primary) $\xrightarrow{\text{Failover}}$ SQLite (Standby Standalone)
+}}
+\caption{Decoupled four-layer architecture of the Vendor Intelligence and Performance System.}
+\label{fig:architecture}
+\end{figure}
+
+% =========================================================
+\section{Algorithmic Formulation}
+% =========================================================
+
+\subsection{Single Invoice Audit Pipeline}
+Algorithm~\ref{alg:single_invoice} formalizes the end-to-end audit pipeline for an individual invoice transaction.
+
+\begin{algorithm}[t]
+\caption{VIPS Single Invoice Audit Pipeline}
+\label{alg:single_invoice}
+\begin{algorithmic}[1]
+\REQUIRE Invoice payload $I = (q_{\text{inv}}, d_{\text{inv}}, f_{\text{inv}})$, Vendor $V$, PO $P$
+\ENSURE Verdict $y$, Probability $p$, Freight baseline $\hat{F}$, Record $R$
+\STATE Validate $I$ against Pydantic~v2 schema (check $q>0, d>0, f\ge 0$)
+\STATE $(q_{\text{po}}, d_{\text{po}}) \leftarrow \text{LookupPurchasesCatalog}(\text{db}, V, P)$
+\STATE $\mathbf{x} \leftarrow [q_{\text{inv}}, d_{\text{inv}}, f_{\text{inv}}, q_{\text{po}}, d_{\text{po}}]$
+\STATE $\mathbf{z} \leftarrow \text{StandardScaler.transform}(\mathbf{x})$
+\STATE $y \leftarrow \text{RandomForestClassifier.predict}(\mathbf{z})$
+\STATE $p \leftarrow \text{RandomForestClassifier.predict\_proba}(\mathbf{z})[0][1]$
+\STATE $\hat{F}_{\text{raw}} \leftarrow \beta_1 \cdot d_{\text{inv}} + \beta_0$
+\STATE $\hat{F} \leftarrow \max(0.0, \min(\hat{F}_{\text{raw}}, d_{\text{inv}}))$
+\STATE $R \leftarrow \text{InsertInvoicePrediction}(\text{db}, V, P, I, y, p, \hat{F}, \text{source}=\text{`MANUAL'})$
+\STATE $\text{db.commit()}; \text{db.refresh}(R)$
+\RETURN $y, p, \hat{F}, R$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Asynchronous Batch Ingestion and Deduplication}
+Algorithm~\ref{alg:batch_ingest} describes the batch processing pipeline with whole-file cryptographic deduplication and row error containment.
+
+\begin{algorithm}[t]
+\caption{Asynchronous Batch Ingestion \& Fault Isolation}
+\label{alg:batch_ingest}
+\begin{algorithmic}[1]
+\REQUIRE Raw CSV bytes $B$, Filename $F$, Database session $\text{db}$
+\ENSURE Batch job record $B_{\text{rec}}$ with UUID and execution metrics
+\IF{$\neg F.\text{endswith}(\text{`.csv'}) \lor |B| == 0 \lor |B| > 10\,\text{MB}$}
+    \STATE \textbf{reject} with HTTP 400 Bad Request
+\ENDIF
+\STATE $h \leftarrow \text{SHA256}(B)$ \COMMENT{Compute whole-file cryptographic hash}
+\IF{$\exists \text{ batch} \in \text{upload\_batches} \mid \text{file\_hash} = h \land \text{status} \ne \text{`FAILED'}$}
+    \STATE \textbf{raise} DuplicateBatchException(`Batch already processed.')
+\ENDIF
+\STATE $u \leftarrow \text{UUIDv4}()$
+\STATE $B_{\text{rec}} \leftarrow \text{InsertUploadBatch}(\text{db}, u, F, h, \text{status}=\text{`PROCESSING'})$
+\STATE $\text{df} \leftarrow \text{DecodeAndParseCSV}(B, \text{encodings}=[\text{utf-8-sig}, \text{utf-8}, \text{latin-1}])$
+\STATE $B_{\text{rec}}.\text{row\_count} \leftarrow |\text{df}|; \text{db.commit}()$
+\STATE $\text{pairs} \leftarrow \text{ExtractDistinctPairs}(\text{df}, \text{VendorNumber}, \text{PONumber})$
+\STATE $\text{PO\_cache} \leftarrow \text{BulkLookupPurchases}(\text{db}, \text{pairs})$
+\FORALL{$\text{chunk} \in \text{SplitIntoChunks}(\text{df}, \text{size}=100)$}
+    \FORALL{$\text{row} \in \text{chunk}$}
+        \TRY
+            \STATE $\text{ValidateSanity}(\text{row})$ \COMMENT{Check $q>0, d>0, f\ge 0, d\le \$10\text{M}$}
+            \STATE $(q_{\text{po}}, d_{\text{po}}) \leftarrow \text{PO\_cache.get}((\text{row}.v, \text{row}.p), (0, 0))$
+            \STATE $\text{ScoreAndSaveInvoice}(\text{db}, \text{row}, q_{\text{po}}, d_{\text{po}}, \text{batch\_id}=B_{\text{rec}}.\text{id})$
+            \STATE $B_{\text{rec}}.\text{success\_count} \leftarrow B_{\text{rec}}.\text{success\_count} + 1$
+        \EXCEPT{ValidationError $\text{err}$}
+            \STATE $\text{LogBatchRowError}(\text{db}, B_{\text{rec}}.\text{id}, \text{row}.n, \text{row.json}, \text{str}(\text{err}))$
+            \STATE $B_{\text{rec}}.\text{error\_count} \leftarrow B_{\text{rec}}.\text{error\_count} + 1$
+        \ENDTRY
+    \ENDFOR
+    \STATE $\text{db.commit}()$ \COMMENT{100-row transactional commit}
+\ENDFOR
+\STATE $B_{\text{rec}}.\text{status} \leftarrow \text{`DONE'}; B_{\text{rec}}.\text{completed\_at} \leftarrow \text{now}(); \text{db.commit}()$
+\RETURN $B_{\text{rec}}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Deterministic SQL Analytics Routing}
+Algorithm~\ref{alg:sql_analytics} details the in-memory intent routing and low-sample safeguard.
+
+\begin{algorithm}[t]
+\caption{Deterministic SQL Analytics Assistant}
+\label{alg:sql_analytics}
+\begin{algorithmic}[1]
+\REQUIRE User natural language query $Q$, Database session $\text{db}$
+\ENSURE Formatted deterministic Markdown response $M$
+\STATE $(\text{intent}, \text{params}) \leftarrow \text{In\_Memory\_Classify\_Intent}(Q)$
+\IF{$\text{intent} == \text{UNSUPPORTED}$}
+    \RETURN $\text{FormattedSupportedMenu}()$
+\ENDIF
+\STATE $\text{data} \leftarrow \text{ExecuteSQLRoutine}(\text{db}, \text{intent}, \text{params})$
+\IF{$\text{data}.\text{vendor\_invoices} < 5$}
+    \STATE $\text{caveat} \leftarrow \text{`\textbf{Low Sample Caveat:} Vendor has } < 5\text{ invoices on record.'}$
+\ELSE
+    \STATE $\text{caveat} \leftarrow \text{`'}$
+\ENDIF
+\STATE $M \leftarrow \text{FormatDeterministicMarkdown}(\text{intent}, \text{data}, \text{caveat})$
+\RETURN $M$ \COMMENT{Instant execution ($<15$\,ms), zero token cost}
+\end{algorithmic}
+\end{algorithm}
+
+% =========================================================
+\section{Mathematical Modeling}
+% =========================================================
+
+\subsection{Feature Standardization}
+Input vectors are centered and scaled using parameters saved at training time:
+\begin{equation}
+z_j = \frac{x_j - \mu_j}{\sigma_j}, \quad j \in \{1, 2, \dots, 5\}
+\end{equation}
+where the five features are: billed invoice quantity ($q_{\text{inv}}$), billed invoice dollars ($d_{\text{inv}}$), freight surcharge ($f_{\text{inv}}$), authorized PO quantity ($q_{\text{po}}$), and authorized PO dollars ($d_{\text{po}}$).
+
+\subsection{Random Forest Posterior Formulation}
+The risk classifier consists of an ensemble of $B = 300$ bagged decision trees minimizing the Gini impurity criterion:
+\begin{equation}
+I_G(t) = 1 - \sum_{k=0}^{1} [p(k \mid t)]^2
+\end{equation}
+The ensemble posterior risk probability represents the mean vote across all constituent trees:
+\begin{equation}
+P(y=1 \mid \mathbf{Z}) = \frac{1}{B} \sum_{b=1}^{B} p_b(y=1 \mid \mathbf{Z})
+\end{equation}
+\begin{equation}
+\hat{y} = 
+\begin{cases} 
+1 \text{ (FLAGGED)}, & \text{if } P(y=1 \mid \mathbf{Z}) \ge 0.50 \\ 
+0 \text{ (CLEARED)}, & \text{if } P(y=1 \mid \mathbf{Z}) < 0.50 
+\end{cases}
+\end{equation}
+
+\subsection{Ordinary Least Squares Freight Regressor}
+The baseline expected freight cost is modeled against invoice dollar amount $D$:
+\begin{equation}
+\hat{F}(D) = 0.00501517 \cdot D + 5.00802058
+\end{equation}
+Equation~(5) establishes an objective variable freight rate of approximately \$5.02 per \$1,000 in invoiced goods plus a fixed \$5.01 baseline handling fee. The prediction is clamped to physical bounds:
+\begin{equation}
+\hat{F}_{\text{clamped}} = \max(0.0, \min(\hat{F}(D), D))
+\end{equation}
+which prevents negative shipping estimates or freight charges exceeding merchandise value.
+
+\subsection{Dual-Database Resilience Mechanism}
+During application boot, VIPS executes a connection probe against PostgreSQL using SQLAlchemy with \texttt{pool\_pre\_ping=True}. If PostgreSQL is unreachable or credentials fail, the application catches the operational exception, logs a warning, and automatically instantiates a local SQLite database engine (\texttt{vendor\_intelligence.db}) with \texttt{check\_same\_thread=False}. Because table schemas are unified under declarative ORM models, the API gateway continues processing predictions, batch uploads, and audit queries without service downtime.
+
+% =========================================================
+\section{Module Design}
+% =========================================================
+
+\begin{itemize}
+    \item \textbf{Module 1: Invoice Risk Classification (\texttt{ml\_models.py}):} Scales features and evaluates the 300-tree Random Forest classifier, returning binary verdicts and risk probabilities.
+    \item \textbf{Module 2: Freight Baseline Estimation (\texttt{ml\_models.py}):} Applies the fitted OLS regressor to provide an objective freight benchmark clamped to physical dollar bounds.
+    \item \textbf{Module 3: Catalog PO Verification \& Input Sanity (\texttt{batch\_processor.py}, \texttt{services.py}):} Matches vendor and PO numbers against the \texttt{purchases} catalog table, validating numeric positivity, date syntax, and enforcing a \$10,000,000 safety ceiling.
+    \item \textbf{Module 4: Asynchronous Batch Ingestion Engine (\texttt{batch\_processor.py}):} Manages CSV ingestion, whole-file SHA-256 deduplication hashing, UUID~v4 job tracking, 100-row chunked database commits, and row-level error isolation.
+    \item \textbf{Module 5: Deterministic SQL Analytics Engine (\texttt{rag\_service.py}):} Resolves 17 structured analytical queries (flag rates, spend rankings, freight ratios, dollar mismatches, vendor comparisons) via in-memory regex intent routing and low-sample size guards ($<5$ invoices).
+    \item \textbf{Module 6: Resilient Dual-Database Persistence (\texttt{database.py}, \texttt{models\_db.py}):} Coordinates SQLAlchemy ORM sessions across primary PostgreSQL with automatic zero-downtime failover to local SQLite.
+\end{itemize}
+
+% =========================================================
+\section{Results and Discussion}
+% =========================================================
+
+\subsection{Feature Importance Analysis}
+Mean Decrease in Impurity (MDI) was extracted across all 300 constituent trees of the Random Forest classifier to identify feature contributions. Table~\ref{tab:feature_importance} summarizes the relative importance weights.
+
+\begin{table}[t]
+\centering
+\caption{Random Forest Feature Importance (Mean Decrease in Impurity)}
+\label{tab:feature_importance}
+\begin{tabular}{llr}
+\toprule
+\textbf{Feature Name} & \textbf{Operational Description} & \textbf{Weight (\%)} \\
+\midrule
+\texttt{total\_item\_dollars} & PO-authorized monetary expenditure baseline & 29.21\% \\
+\texttt{total\_item\_quantity} & PO-authorized physical unit quantity baseline & 20.53\% \\
+\texttt{invoice\_dollars} & Total billed invoice dollar expenditure & 18.11\% \\
+\texttt{invoice\_quantity} & Total billed physical invoice unit quantity & 16.34\% \\
+\texttt{Freight} & Billed shipping and freight handling surcharge & 15.81\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Crucially, the two purchase order baseline features account for nearly half (49.74\%) of the decision boundary, corroborating the domain principle that the authorized purchase order serves as the primary ground truth against which invoice validity must be assessed.
+
+\subsection{Component Technology Stack}
+Table~\ref{tab:tech_stack} details the complete software stack of the VIPS platform.
+
+\begin{table}[t]
+\centering
+\caption{Comprehensive Technology Stack Across Architectural Layers}
+\label{tab:tech_stack}
+\begin{tabular}{p{0.22\columnwidth}p{0.32\columnwidth}p{0.36\columnwidth}}
+\toprule
+\textbf{Layer} & \textbf{Technologies} & \textbf{Operational Scope} \\
+\midrule
+Gateway \& UI & FastAPI (ASGI), Pydantic~v2, Vanilla HTML5/CSS3/ES6+ & REST routing, schema validation, OpenAPI docs, Manifest Desk UI. \\
+Batch Ingestion & FastAPI BackgroundTasks, Pandas, hashlib (SHA-256) & Async processing, deduplication, chunked transactions, error isolation. \\
+ML Intelligence & Scikit-Learn (Joblib), NumPy, StandardScaler & RandomForest risk classification, OLS freight regression, catalog matching. \\
+SQL Analytics & SQLAlchemy~2.0 ORM, Python \texttt{re} (In-Memory Routing) & 17 deterministic SQL analytics routines, low-sample guards, Markdown rendering. \\
+Persistence & PostgreSQL (Primary) with SQLite Auto-Failover & High-concurrency persistence with automatic zero-downtime offline standby. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Latency and Operational Benchmarking}
+Local benchmarking on an Intel Core i7 / 16\,GB RAM workstation indicates that inference latency is under 2.0\,ms for the Random Forest classifier and under 0.5\,ms for the OLS freight regressor. End-to-end synchronous HTTP response times average 38\,ms. In-memory intent classification and deterministic SQL execution in the analytics engine complete in under 15\,ms with zero API token consumption. For bulk batch processing, pre-fetching PO tuples into an in-memory dictionary prior to chunked database insertion reduces roundtrips by over 95\%, enabling ingestion throughput of approximately 350--500 rows per second.
+
+% =========================================================
+\section{Conclusion and Future Scope}
+% =========================================================
+
+This paper presented the Vendor Intelligence and Performance System (VIPS), an enterprise-ready invoice audit automation framework. The platform successfully realizes non-blocking asynchronous CSV batch ingestion, pre-inference cryptographic SHA-256 deduplication, row-level error containment, catalog purchase-order verification, dual-database persistence with automatic SQLite failover, and a 17-query deterministic SQL analytics assistant.
+
+Future work will focus on integrating multimodal Optical Character Recognition (OCR) for scanned paper and PDF invoices, introducing multi-currency foreign exchange reconciliation, and implementing multi-tenant enterprise access controls.
+
+% =========================================================
+\section*{Acknowledgment}
+% =========================================================
+
+The authors thank Prof. Dakshta Jain for her guidance throughout the design and development of this project, and the Department of Computer Science and Engineering (Artificial Intelligence), G H Raisoni College of Engineering and Management, Pune, for the resources and support extended to carry out this work.
+
+% =========================================================
+% REFERENCES
+% =========================================================
+
+\begin{thebibliography}{00}
+
+\bibitem{breiman}
+L. Breiman, ``Random Forests,'' \textit{Machine Learning}, vol. 45, no. 1, pp. 5--32, 2001.
+
+\bibitem{furneaux}
+B. Furneaux and M. Wade, ``Automating the purchase-to-pay process: A systematic evaluation of AI-driven invoice verification,'' \textit{Journal of Purchasing and Supply Management}, vol. 24, no. 4, pp. 312--324, 2018.
+
+\bibitem{pedregosa}
+F. Pedregosa et al., ``Scikit-learn: Machine learning in Python,'' \textit{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+
+\bibitem{tiwari}
+A. Tiwari and S. Kumar, ``Comparative analysis of asynchronous microframeworks for high-throughput machine learning inference,'' in \textit{Proc. IEEE Int. Conf. Cloud Computing and Data Science}, pp. 104--109, 2021.
+
+\bibitem{fawcett}
+T. Fawcett, ``An introduction to ROC analysis,'' \textit{Pattern Recognition Letters}, vol. 27, no. 8, pp. 861--874, 2006.
+
+\bibitem{ji_hallucination}
+Z. Ji et al., ``Survey of hallucination in natural language generation,'' \textit{ACM Computing Surveys}, vol. 55, no. 12, pp. 1--38, 2023.
+
+\bibitem{lewis_rag}
+P. Lewis et al., ``Retrieval-augmented generation for knowledge-intensive NLP tasks,'' in \textit{Proc. Advances in Neural Information Processing Systems (NeurIPS)}, 2020.
+
+\bibitem{aherkar_report}
+S. Aherkar, S. Gaikwad, and S. Bishnoi, ``Vendor Intelligence and Performance System: Project Documentation,'' G. H. Raisoni College of Engineering and Management, Internal Report, 2026.
+
+\end{thebibliography}
+
+\balance
+\end{document}

@@ -79,23 +79,143 @@ async function apiRequest(path, options = {}) {
   return response.json();
 }
 
+function inlineFormat(str) {
+  if (!str) return "";
+  return str
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+
 function renderMarkdown(text) {
   if (!text) return "";
-  let html = text
-    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-    .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
-    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-    .replace(/^\*\* (.*$)/gim, '<h2>$1</h2>')
-    .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`(.*?)`/g, '<code>$1</code>')
-    .replace(/^\- (.*$)/gim, '<li>$1</li>')
-    .replace(/\n\n/g, '<br/><br/>');
 
-  html = html.replace(/(<li>.*<\/li>)/gms, '<ul>$1</ul>');
-  return html;
+  // 1. If marked.js is available via CDN, use it
+  if (window.marked && typeof window.marked.parse === "function") {
+    try {
+      return window.marked.parse(text);
+    } catch (e) {
+      console.warn("marked.parse failed, falling back to local parser", e);
+    }
+  }
+
+  // 2. High-reliability line-by-line state-machine parser fallback
+  const lines = text.split(/\r?\n/);
+  let html = [];
+  let inTable = false;
+  let tableRows = [];
+  let inList = false;
+
+  function flushTable() {
+    if (!inTable) return;
+    inTable = false;
+    if (tableRows.length < 2) {
+      tableRows.forEach((r) => html.push(`<p>${inlineFormat(r)}</p>`));
+      tableRows = [];
+      return;
+    }
+    const sep = tableRows[1].trim();
+    if (/^\|(?:\s*:?-+:?\s*\|)+$/.test(sep)) {
+      const headers = tableRows[0].slice(1, -1).split("|").map((c) => c.trim());
+      let t = '<div class="table-wrap"><table class="assistant-table"><thead><tr>';
+      headers.forEach((h) => {
+        t += `<th>${inlineFormat(h)}</th>`;
+      });
+      t += "</tr></thead><tbody>";
+      for (let i = 2; i < tableRows.length; i++) {
+        const cells = tableRows[i].slice(1, -1).split("|").map((c) => c.trim());
+        t += "<tr>";
+        cells.forEach((c) => {
+          t += `<td>${inlineFormat(c)}</td>`;
+        });
+        t += "</tr>";
+      }
+      t += "</tbody></table></div>";
+      html.push(t);
+    } else {
+      tableRows.forEach((r) => html.push(`<p>${inlineFormat(r)}</p>`));
+    }
+    tableRows = [];
+  }
+
+  function flushList() {
+    if (inList) {
+      html.push("</ul>");
+      inList = false;
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+
+    // Table rows
+    if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
+      flushList();
+      inTable = true;
+      tableRows.push(trimmed);
+      continue;
+    } else if (inTable) {
+      flushTable();
+    }
+
+    // Empty lines
+    if (!trimmed) {
+      flushList();
+      continue;
+    }
+
+    // Headings
+    if (trimmed.startsWith("#### ")) {
+      flushList();
+      html.push(`<h4>${inlineFormat(trimmed.slice(5))}</h4>`);
+      continue;
+    }
+    if (trimmed.startsWith("### ")) {
+      flushList();
+      html.push(`<h3>${inlineFormat(trimmed.slice(4))}</h3>`);
+      continue;
+    }
+    if (trimmed.startsWith("## ") || trimmed.startsWith("** ")) {
+      flushList();
+      html.push(`<h2>${inlineFormat(trimmed.slice(3))}</h2>`);
+      continue;
+    }
+    if (trimmed.startsWith("# ")) {
+      flushList();
+      html.push(`<h1>${inlineFormat(trimmed.slice(2))}</h1>`);
+      continue;
+    }
+
+    // Blockquote
+    if (trimmed.startsWith("> ")) {
+      flushList();
+      html.push(`<blockquote>${inlineFormat(trimmed.slice(2))}</blockquote>`);
+      continue;
+    }
+
+    // List item
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      if (!inList) {
+        html.push("<ul>");
+        inList = true;
+      }
+      html.push(`<li>${inlineFormat(trimmed.slice(2))}</li>`);
+      continue;
+    } else if (inList) {
+      flushList();
+    }
+
+    // Normal paragraph line
+    html.push(`<p>${inlineFormat(trimmed)}</p>`);
+  }
+
+  flushTable();
+  flushList();
+
+  return html.join("");
 }
+
 
 // ---------- Client-side Router ----------
 
