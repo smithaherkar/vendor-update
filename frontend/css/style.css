@@ -1126,3 +1126,226 @@ body {
   color: #fff;
 }
 
+.foot {
+  text-align: center;
+  padding: 24px 20px;
+  color: var(--muted-text);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.5px;
+  border-top: 1px solid rgba(203, 191, 166, 0.4);
+  margin-top: 36px;
+}
+
+/* =========================================================
+   SHAP Explainability & Risk Attribution Components
+   ========================================================= */
+
+.shap-card {
+  margin-top: 18px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 18px 20px;
+  box-shadow: 0 2px 8px rgba(16, 35, 58, 0.05);
+  font-family: var(--font-body);
+}
+
+.shap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px dashed var(--rule);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.shap-badge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--rust);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shap-verdict-pill {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.shap-verdict-pill.flagged {
+  background: rgba(168, 58, 50, 0.12);
+  color: var(--brick);
+  border: 1px solid rgba(168, 58, 50, 0.3);
+}
+
+.shap-verdict-pill.cleared {
+  background: rgba(46, 107, 79, 0.12);
+  color: var(--forest);
+  border: 1px solid rgba(46, 107, 79, 0.3);
+}
+
+.shap-summary-box {
+  background: #F0EAE1;
+  border-left: 3px solid var(--rust);
+  padding: 10px 14px;
+  border-radius: 0 4px 4px 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink-text);
+  margin-bottom: 16px;
+}
+
+.shap-summary-box.flagged {
+  border-left-color: var(--brick);
+}
+
+.shap-summary-box.cleared {
+  border-left-color: var(--forest);
+}
+
+.shap-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.shap-metric-item {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 8px 12px;
+  text-align: center;
+}
+
+.shap-metric-item .lbl {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted-text);
+  margin-bottom: 4px;
+}
+
+.shap-metric-item .val {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.shap-features-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.shap-feature-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(203, 191, 166, 0.35);
+}
+
+.shap-feature-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.shap-feature-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.84rem;
+}
+
+.shap-feature-name {
+  font-weight: 600;
+  color: var(--ink-text);
+}
+
+.shap-feature-raw {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--muted-text);
+  margin-left: 6px;
+}
+
+.shap-delta-badge {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.shap-delta-badge.risk {
+  background: rgba(168, 58, 50, 0.12);
+  color: var(--brick);
+}
+
+.shap-delta-badge.safe {
+  background: rgba(46, 107, 79, 0.12);
+  color: var(--forest);
+}
+
+.shap-delta-badge.neutral {
+  background: rgba(91, 107, 122, 0.12);
+  color: var(--muted-text);
+}
+
+.shap-bar-track {
+  width: 100%;
+  height: 8px;
+  background: #E5DDCF;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.shap-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease-out;
+}
+
+.shap-bar-fill.risk {
+  background: linear-gradient(90deg, #D47A4A, #A83A32);
+}
+
+.shap-bar-fill.safe {
+  background: linear-gradient(90deg, #48936E, #2E6B4F);
+}
+
+.shap-feature-desc {
+  font-size: 0.76rem;
+  color: var(--muted-text);
+  margin-top: 2px;
+}
+
+.shap-footnote {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--rule);
+  font-family: var(--font-mono);
+  font-size: 0.70rem;
+  color: var(--muted-text);
+  line-height: 1.4;
+}
+
+

@@ -243,7 +243,7 @@ sequenceDiagram
     participant Router as routers/rag.py or routers/invoice.py
     participant Service as rag_service.py
     participant DB as Database Session
-    participant Gemini as Google GenAI (Gemini-1.5)
+    participant Gemini as Google GenAI (Gemini-2.0)
 
     UI->>Router: POST /api/rag/query {"question": "Which vendors had highest flagged invoices?"}
     Router->>Service: rag_service.handle_query(db, question)

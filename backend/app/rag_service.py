@@ -23,7 +23,7 @@ LOW_SAMPLE_WARNING = (
     "Metrics should be interpreted with caution as they may not represent long-term vendor performance."
 )
 
-SUPPORTED_MENU_TEXT = """I can answer questions from our 17 supported analytics queries:
+SUPPORTED_MENU_TEXT = """I can answer questions from our 18 supported analytics and audit queries:
 
 1. **Risk & Flags:**
    - Flag count and rate for a specific vendor (*e.g., "What is the flag rate for VND-1001?"*)
@@ -32,26 +32,29 @@ SUPPORTED_MENU_TEXT = """I can answer questions from our 17 supported analytics 
    - Company-wide flag rate (*e.g., "What is the company overall flag rate?"*)
    - Riskiest invoice on record (*e.g., "What is the single riskiest invoice?"*)
 
-2. **Spend Analytics:**
+2. **Audit & Explainability (SHAP):**
+   - Explain why an invoice was flagged (*e.g., "Why was invoice #45 flagged?" or "Explain invoice 9"*)
+
+3. **Spend Analytics:**
    - Total spend per vendor (*e.g., "Top vendors by total spend"*)
    - Average invoice dollars per vendor (*e.g., "Average invoice dollar amount by vendor"*)
    - Largest single invoice (*e.g., "What is the largest single invoice on record?"*)
 
-3. **Freight Metrics:**
+4. **Freight Metrics:**
    - Average freight cost per vendor (*e.g., "Which vendors have the highest average freight?"*)
    - Freight-to-invoice ratio per vendor (*e.g., "Average freight percentage by vendor"*)
    - Highest single freight ratio (*e.g., "What invoice had the highest freight ratio?"*)
 
-4. **Dollar Mismatches:**
+5. **Dollar Mismatches:**
    - Average mismatch for a specific vendor (*e.g., "Dollar mismatch for VND-1001"*)
    - Vendors ranked by largest dollar mismatch (*e.g., "Which vendors have the biggest dollar mismatches?"*)
    - Largest single mismatch on one invoice (*e.g., "What is the largest single invoice mismatch?"*)
 
-5. **Volume & Confidence:**
+6. **Volume & Confidence:**
    - Invoice count for a vendor (*e.g., "How many invoices for VND-1001?"*)
    - Vendors with low history (*e.g., "Which vendors have fewer than 5 invoices?"*)
 
-6. **Vendor Comparison:**
+7. **Vendor Comparison:**
    - Compare two vendors (*e.g., "Compare VND-1001 and VND-1002"*)
 
 *(Note: Delivery/delay statistics are not currently tracked in the dataset).*"""
@@ -555,6 +558,42 @@ def compare_two_vendors(db: Session, vendor_a: str, vendor_b: str) -> dict[str, 
     }
 
 
+def explain_invoice_anomaly(db: Session, invoice_id: int) -> dict[str, Any]:
+    """18. Explain risk drivers and feature attributions for a specific invoice using SHAP."""
+    rec = db.query(models_db.InvoicePrediction).filter(models_db.InvoicePrediction.id == invoice_id).first()
+    if not rec:
+        return {"found": False, "invoice_id": invoice_id}
+
+    from app import ml_models
+    payload = {
+        "invoice_quantity": rec.invoice_quantity,
+        "invoice_dollars": rec.invoice_dollars,
+        "Freight": rec.freight,
+        "total_item_quantity": rec.total_item_quantity,
+        "total_item_dollars": rec.total_item_dollars,
+    }
+    explanation = ml_models.explain_invoice_flag(payload)
+    dollar_mismatch = abs(rec.invoice_dollars - rec.total_item_dollars)
+
+    return {
+        "found": True,
+        "id": rec.id,
+        "vendor_number": rec.vendor_number or "N/A",
+        "po_number": rec.po_number or "N/A",
+        "invoice_date": rec.invoice_date or "N/A",
+        "invoice_dollars": round(rec.invoice_dollars, 2),
+        "total_item_dollars": round(rec.total_item_dollars, 2),
+        "dollar_mismatch": round(dollar_mismatch, 2),
+        "freight": round(rec.freight, 2),
+        "predicted_flag": explanation["predicted_flag"],
+        "risk_label": explanation["risk_label"],
+        "risk_probability_pct": round(explanation["risk_probability"] * 100.0, 1),
+        "base_risk_pct": round(explanation["base_risk"] * 100.0, 1),
+        "summary": explanation["summary"],
+        "features": explanation["features"],
+    }
+
+
 # =====================================================================
 # 2. INSTANT IN-MEMORY INTENT ROUTING (0ms Latency)
 # =====================================================================
@@ -568,7 +607,8 @@ def _extract_vendors_from_text(text: str) -> list[str]:
             return
         t = tok.strip().upper()
         t = re.sub(r"^VNDC[-_ ]*", "", t)
-        if t and t not in raw_tokens:
+        # Avoid treating plural 'S' from 'vendors' as a vendor token
+        if t and t not in raw_tokens and t != "S":
             raw_tokens.append(t)
 
     # 1. Standard prefixed tokens (e.g. VND-1001, VND_1002)
@@ -577,9 +617,12 @@ def _extract_vendors_from_text(text: str) -> list[str]:
         _add(m)
 
     # 2. Keyword-prefixed tokens (e.g. VND 2010, VENDOR 2006, VNDC2006)
-    kw_matches = re.findall(r"\b(?:VND|VENDOR|VNDC)[-_ ]*([A-Za-z0-9]+)\b", text, re.IGNORECASE)
-    for m in kw_matches:
-        _add(m)
+    # Require at least one delimiter after VENDOR to avoid matching English 'vendors'
+    kw_matches = re.findall(r"\b(?:VND|VNDC)[-_ ]*([A-Za-z0-9]+)\b|\bVENDOR[-_ ]+([A-Za-z0-9]+)\b", text, re.IGNORECASE)
+    for m1, m2 in kw_matches:
+        match_tok = m1 or m2
+        if match_tok and match_tok.upper() != "S":
+            _add(match_tok)
 
     # 3. Numeric IDs (3-6 digits) when in vendor or comparison context
     is_compare_context = bool(re.search(r"\b(?:compare|comparison|versus|vs|between)\b", text, re.IGNORECASE))
@@ -631,6 +674,16 @@ def classify_intent(message: str) -> tuple[str, dict[str, Any]]:
     if has_any("delay", "delays", "delayed", "late") and has_any("delivery", "shipping", "transit") or \
        phrase("on-time") or phrase("lead time") or phrase("transit time") or phrase("days late"):
         return "UNSUPPORTED_DELAY", {}
+
+    # ------------------------------------------------------------------ #
+    #  Q18: Explain invoice anomaly via SHAP                             #
+    # ------------------------------------------------------------------ #
+    if has_any("why", "explain", "reason", "breakdown", "driver", "drivers", "cause", "attribution") and \
+       has_any("invoice", "invoices", "entry", "flag", "flagged", "cleared", "risk"):
+        inv_match = re.search(r"(?:invoice|entry|id)\s*#?\s*(\d+)|#(\d+)", msg, re.IGNORECASE)
+        if inv_match:
+            inv_id = int(inv_match.group(1) or inv_match.group(2))
+            return "Q18_EXPLAIN_INVOICE_ANOMALY", {"invoice_id": inv_id}
 
     # ------------------------------------------------------------------ #
     #  Q17: Compare two vendors                                           #
@@ -716,7 +769,7 @@ def classify_intent(message: str) -> tuple[str, dict[str, Any]]:
     # ------------------------------------------------------------------ #
     #  Q13: Vendors ranked by mismatch                                    #
     # ------------------------------------------------------------------ #
-    if has_any("mismatch", "variance", "discrepancy", "gap") and        has_any("vendor", "vendors", "rank", "ranked", "highest", "top", "which", "all", "list", "order"):
+    if has_any("mismatch", "mismatches", "variance", "discrepancy", "gap") and has_any("vendor", "vendors", "rank", "ranked", "highest", "top", "which", "all", "list", "order", "biggest", "largest"):
         return "Q13_RANKED_MISMATCH_VENDORS", {}
 
     # ------------------------------------------------------------------ #
@@ -767,6 +820,7 @@ def classify_intent(message: str) -> tuple[str, dict[str, Any]]:
                 temperature=0.0,
                 max_output_tokens=80,
                 timeout=2.0,
+                max_retries=0,
             )
             sys_prompt = (
                 "Map user prompt to one exact key: Q1_VENDOR_FLAG_STATS, Q2_RANKED_FLAG_RATE, Q3_NEVER_FLAGGED_VENDORS, "
@@ -805,7 +859,35 @@ def _format_result(intent: str, data: Any, original_message: str) -> str:
         )
 
     if intent == "UNSUPPORTED":
-        return f"❓ **Unsupported Query:** I could not map your question to one of our 17 fixed analytics queries.\n\n{SUPPORTED_MENU_TEXT}"
+        return f"❓ **Unsupported Query:** I could not map your question to one of our 18 fixed analytics queries.\n\n{SUPPORTED_MENU_TEXT}"
+
+    # Q18: Explain invoice anomaly via SHAP
+    if intent == "Q18_EXPLAIN_INVOICE_ANOMALY":
+        if not data or not data.get("found"):
+            target_id = params.get("invoice_id") if "params" in locals() else "requested"
+            return f"❌ **Invoice #{data.get('invoice_id', target_id) if data else target_id} not found in the database.** Please check the entry ID."
+
+        status_badge = "🚨 **FLAGGED (High Risk)**" if data["predicted_flag"] == 1 else "✅ **CLEARED (Low Risk)**"
+        feature_rows = []
+        for f in data["features"]:
+            sign = "+" if f["shap_value"] > 0 else ""
+            direction_icon = "🔺 Increases Risk" if f["impact"] == "INCREASES_RISK" else "🟢 Lowers Risk"
+            feature_rows.append(
+                f"| {f['label']} | {f['raw_value']:,} | `{sign}{f['shap_value']:.4f}` | {direction_icon} ({f['impact_pct']}%) |"
+            )
+
+        return (
+            f"### 🔍 Model Decision Explanation: Invoice #{data['id']}\n\n"
+            f"- **Verdict:** {status_badge} with **{data['risk_probability_pct']}%** probability (Baseline population risk: {data['base_risk_pct']}%)\n"
+            f"- **Vendor:** `{data['vendor_number']}` (PO: `{data['po_number']}`)\n"
+            f"- **Financials:** Billed **${data['invoice_dollars']:,.2f}** vs PO **${data['total_item_dollars']:,.2f}** (Mismatch: **${data['dollar_mismatch']:,.2f}**)\n"
+            f"- **Freight:** ${data['freight']:,.2f}\n\n"
+            f"**Audit Diagnosis:** {data['summary']}\n\n"
+            "#### Feature Attributions (SHAP TreeExplainer):\n\n"
+            "| Feature | Value | SHAP Impact | Direction (Share) |\n"
+            "| :--- | :--- | :--- | :--- |\n"
+            + "\n".join(feature_rows)
+        )
 
     # Q1: Single vendor flag stats
     if intent == "Q1_VENDOR_FLAG_STATS":
@@ -1077,6 +1159,8 @@ def ask_assistant(message: str, db: Optional[Session] = None) -> str:
             data = get_low_history_vendors(db, threshold=LOW_SAMPLE_THRESHOLD, limit=15)
         elif intent == "Q17_COMPARE_VENDORS":
             data = compare_two_vendors(db, params.get("vendor_a", ""), params.get("vendor_b", ""))
+        elif intent == "Q18_EXPLAIN_INVOICE_ANOMALY":
+            data = explain_invoice_anomaly(db, int(params.get("invoice_id", 0)))
         elif intent.startswith("UNSUPPORTED"):
             data = None
         else:

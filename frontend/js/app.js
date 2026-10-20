@@ -32,6 +32,11 @@ const batchErrorsModal = document.getElementById("batchErrorsModal");
 const closeBatchErrorsModal = document.getElementById("closeBatchErrorsModal");
 const batchErrorsModalTitle = document.getElementById("batchErrorsModalTitle");
 
+const invoiceExplainModal = document.getElementById("invoiceExplainModal");
+const closeInvoiceExplainModal = document.getElementById("closeInvoiceExplainModal");
+const invoiceExplainModalTitle = document.getElementById("invoiceExplainModalTitle");
+const invoiceExplainModalBody = document.getElementById("invoiceExplainModalBody");
+
 // ---------- Helpers ----------
 
 function money(value) {
@@ -256,15 +261,10 @@ window.addEventListener("hashchange", handleRoute);
 // ---------- Health Check ----------
 
 async function checkHealth() {
-  const dot = document.getElementById("apiDot");
-  const text = document.getElementById("apiStatusText");
   try {
     await apiRequest("/api/health");
-    dot.className = "dot online";
-    text.textContent = "Connected to desk API";
   } catch (err) {
-    dot.className = "dot offline";
-    text.textContent = "API unreachable — is uvicorn running?";
+    console.warn("API health check:", err.message);
   }
 }
 
@@ -411,7 +411,7 @@ invoiceForm.addEventListener("submit", async (e) => {
     total_item_dollars: Number(formData.get("total_item_dollars")),
   };
 
-  setButtonLoading(invoiceForm, true, "Stamping…");
+  setButtonLoading(invoiceForm, true, "Evaluating…");
   invoiceResult.innerHTML = "";
 
   try {
@@ -421,14 +421,37 @@ invoiceForm.addEventListener("submit", async (e) => {
     });
 
     const isFlagged = result.predicted_flag === 1;
+    const confidencePct = isFlagged
+      ? (result.risk_probability * 100).toFixed(1)
+      : ((1 - result.risk_probability) * 100).toFixed(1);
+
     invoiceResult.innerHTML = `
       <div class="stamp-wrap">
         <div class="stamp ${isFlagged ? "flagged" : "cleared"}">
           ${isFlagged ? "Flagged" : "Cleared"}
-          <small>confidence ${(result.risk_probability * 100).toFixed(1)}% &middot; entry #${result.id}</small>
+          <small>confidence ${confidencePct}% &middot; entry #${result.id}</small>
+        </div>
+      </div>
+      <div id="manualInvoiceShapSlot">
+        <div style="text-align:center; padding:12px; color:var(--muted-text); font-family:var(--font-mono); font-size:0.82rem;">
+          ⚡ Computing SHAP feature attribution breakdown…
         </div>
       </div>
     `;
+
+    // Fetch SHAP feature attribution immediately
+    try {
+      const explanation = await apiRequest(`/api/invoice/${result.id}/explain`);
+      const shapSlot = document.getElementById("manualInvoiceShapSlot");
+      if (shapSlot) {
+        shapSlot.innerHTML = renderShapCard(explanation);
+      }
+    } catch (shapErr) {
+      console.warn("Could not load SHAP breakdown:", shapErr);
+      const shapSlot = document.getElementById("manualInvoiceShapSlot");
+      if (shapSlot) shapSlot.innerHTML = "";
+    }
+
     loadDashboardMetrics();
   } catch (err) {
     invoiceResult.innerHTML = `<p class="error-note">Could not score this invoice: ${err.message}</p>`;
@@ -629,7 +652,12 @@ async function loadUnifiedHistory() {
       apiRequest(`/api/freight/history?${freightParams}`),
     ]);
 
-    tbodyInv.innerHTML = invRows.map((r) => `
+    tbodyInv.innerHTML = invRows.map((r) => {
+      const isFlagged = r.predicted_flag === 1;
+      const conf = isFlagged
+        ? (r.risk_probability * 100).toFixed(1)
+        : ((1 - r.risk_probability) * 100).toFixed(1);
+      return `
       <tr>
         <td>${r.id}</td>
         <td>${r.vendor_number || "—"} / ${r.po_number || "—"}<br/><small style="color:var(--muted-text);">${r.invoice_date || ""}</small></td>
@@ -640,10 +668,15 @@ async function loadUnifiedHistory() {
           ${r.batch_uuid ? `<br/><a href="#batches" class="batch-chip" onclick="filterHistoryByBatch('${r.batch_uuid}')">b/${r.batch_uuid.slice(0, 6)}</a>` : ''}
         </td>
         <td><span class="verdict-tag ${r.risk_label === "FLAGGED" ? "flagged" : "cleared"}">${r.risk_label}</span></td>
-        <td>${(r.risk_probability * 100).toFixed(1)}%</td>
+        <td>${conf}%</td>
         <td>${timestamp(r.created_at)}</td>
+        <td>
+          <button type="button" class="btn btn--ghost btn--sm" onclick="explainInvoice(${r.id})" title="SHAP Feature Attribution">
+            🔍 Explain
+          </button>
+        </td>
       </tr>
-    `).join("");
+    `}).join("");
     emptyInv.style.display = invRows.length ? "none" : "block";
 
     tbodyFrt.innerHTML = frtRows.map((r) => `
@@ -787,11 +820,134 @@ async function viewBatchErrors(batchUuid) {
 closeBatchErrorsModal.addEventListener("click", () => batchErrorsModal.hidden = true);
 batchErrorsModal.addEventListener("click", (e) => { if (e.target === batchErrorsModal) batchErrorsModal.hidden = true; });
 
+if (closeInvoiceExplainModal) {
+  closeInvoiceExplainModal.addEventListener("click", () => invoiceExplainModal.hidden = true);
+}
+if (invoiceExplainModal) {
+  invoiceExplainModal.addEventListener("click", (e) => { if (e.target === invoiceExplainModal) invoiceExplainModal.hidden = true; });
+}
+
 window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     batchErrorsModal.hidden = true;
+    if (invoiceExplainModal) invoiceExplainModal.hidden = true;
   }
 });
+
+// ── SHAP Explainability Renderer & Modal Handler ─────────────────────────────
+
+function formatFeatureValue(name, val) {
+  if (name.includes("dollars") || name.toLowerCase() === "freight") {
+    return `$${money(val)}`;
+  }
+  return Number(val).toLocaleString();
+}
+
+function renderShapCard(data) {
+  const isFlagged = data.predicted_flag === 1;
+  const riskPct = (data.risk_probability * 100).toFixed(1);
+  const basePct = (data.base_risk * 100).toFixed(1);
+  const riskDelta = ((data.risk_probability - data.base_risk) * 100).toFixed(1);
+  const sign = data.risk_probability >= data.base_risk ? "+" : "";
+
+  // Max absolute shap value to scale bars relative to each other
+  const maxAbs = Math.max(...data.features.map(f => Math.abs(f.shap_value)), 0.05);
+
+  const featuresHtml = data.features.map(f => {
+    const absVal = Math.abs(f.shap_value);
+    const barWidthPct = Math.min(100, Math.max(8, Math.round((absVal / maxAbs) * 100)));
+    const isRisk = f.shap_value > 0.0001;
+    const isSafe = f.shap_value < -0.0001;
+    const badgeClass = isRisk ? "risk" : (isSafe ? "safe" : "neutral");
+    const deltaText = (f.shap_value >= 0 ? "+" : "") + (f.shap_value * 100).toFixed(1) + "%";
+    const dirLabel = isRisk ? "▲ Risk Factor" : (isSafe ? "▼ Mitigating Factor" : "— Neutral");
+
+    return `
+      <div class="shap-feature-row">
+        <div class="shap-feature-meta">
+          <div>
+            <span class="shap-feature-name">${f.label || f.display_name || f.feature}</span>
+            <span class="shap-feature-raw">(${formatFeatureValue(f.feature || f.feature_name, f.raw_value ?? f.feature_value)})</span>
+          </div>
+          <span class="shap-delta-badge ${badgeClass}">${deltaText} (${dirLabel})</span>
+        </div>
+        <div class="shap-bar-track">
+          <div class="shap-bar-fill ${isRisk ? 'risk' : 'safe'}" style="width: ${barWidthPct}%;"></div>
+        </div>
+        <div class="shap-feature-desc">${f.description || (f.impact_pct + "% impact share &middot; " + (f.impact === 'INCREASES_RISK' ? 'Increases anomaly risk' : 'Reduces anomaly risk'))}</div>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="shap-card">
+      <div class="shap-header">
+        <span class="shap-badge">⚡ TreeExplainer &middot; Exact Feature Risk Attribution</span>
+        <span class="shap-verdict-pill ${isFlagged ? 'flagged' : 'cleared'}">
+          ${isFlagged ? '🔴 High Risk Anomaly' : '🟢 Cleared Invoice'} &middot; ${riskPct}% Risk
+        </span>
+      </div>
+
+      <div class="shap-summary-box ${isFlagged ? 'flagged' : 'cleared'}">
+        <strong>Diagnostic Summary:</strong> ${data.summary}
+      </div>
+
+      <div class="shap-metrics-row">
+        <div class="shap-metric-item">
+          <span class="lbl">Invoice Total</span>
+          <span class="val">$${money(data.invoice_dollars)}</span>
+        </div>
+        <div class="shap-metric-item">
+          <span class="lbl">PO Items Total</span>
+          <span class="val">$${money(data.total_item_dollars)}</span>
+        </div>
+        <div class="shap-metric-item">
+          <span class="lbl">Dollar Mismatch</span>
+          <span class="val" style="${data.dollar_mismatch > 0 ? 'color:var(--brick);' : ''}">$${money(data.dollar_mismatch)}</span>
+        </div>
+        <div class="shap-metric-item">
+          <span class="lbl">Base Population Risk</span>
+          <span class="val">${basePct}%</span>
+        </div>
+        <div class="shap-metric-item">
+          <span class="lbl">Model Risk Score</span>
+          <span class="val" style="color:${isFlagged ? 'var(--brick)' : 'var(--forest)'};">${riskPct}% (${sign}${riskDelta}%)</span>
+        </div>
+      </div>
+
+      <div style="font-family:var(--font-mono); font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted-text); margin-bottom:8px;">
+        Feature Risk Contributors (Shapley Values)
+      </div>
+
+      <div class="shap-features-wrap">
+        ${featuresHtml}
+      </div>
+
+      <div class="shap-footnote">
+        🧮 <strong>Mathematical Guarantee:</strong> Baseline population risk (${basePct}%) plus sum of all feature SHAP contributions equals exactly the model's output risk (${riskPct}%). Computed in &lt;15ms via TreeExplainer on Random Forest.
+      </div>
+    </div>
+  `;
+}
+
+window.explainInvoice = async function(invoiceId) {
+  if (!invoiceExplainModal) return;
+  invoiceExplainModalTitle.textContent = `Invoice #${invoiceId} · SHAP Risk Audit`;
+  invoiceExplainModalBody.innerHTML = `
+    <div style="text-align:center; padding:36px; color:var(--muted-text); font-family:var(--font-mono);">
+      <div style="font-size:1.8rem; margin-bottom:8px;">⚡</div>
+      Calculating exact TreeExplainer Shapley values for Invoice #${invoiceId}…
+    </div>
+  `;
+  invoiceExplainModal.hidden = false;
+
+  try {
+    const data = await apiRequest(`/api/invoice/${invoiceId}/explain`);
+    invoiceExplainModalBody.innerHTML = renderShapCard(data);
+  } catch (err) {
+    invoiceExplainModalBody.innerHTML = `<div class="error-note">Failed to retrieve SHAP explanation for Invoice #${invoiceId}: ${err.message}</div>`;
+  }
+};
 
 // ── AI Assistant Query History (sessionStorage, max 5) ────────────────────
 

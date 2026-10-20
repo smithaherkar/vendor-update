@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from app.database import get_db, SessionLocal
-from app import models_db, schemas, services, batch_processor
+from app import models_db, schemas, services, batch_processor, ml_models
 
 router = APIRouter(prefix="/api/invoice", tags=["Invoice Risk"])
 
@@ -39,6 +39,89 @@ def predict_invoice(payload: schemas.InvoiceInput, db: Session = Depends(get_db)
         batch_id=record.batch_id,
         created_at=record.created_at,
     )
+
+
+@router.get("/{invoice_id}/explain", response_model=schemas.InvoiceExplanationOut)
+def explain_invoice_by_id(invoice_id: int, db: Session = Depends(get_db)):
+    """
+    Calculates exact SHAP feature attributions for a previously saved invoice.
+    Returns which features increased or decreased the fraud/discrepancy risk.
+    """
+    record = db.query(models_db.InvoicePrediction).filter(models_db.InvoicePrediction.id == invoice_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail=f"Invoice #{invoice_id} not found.")
+
+    payload = {
+        "invoice_quantity": record.invoice_quantity,
+        "invoice_dollars": record.invoice_dollars,
+        "Freight": record.freight,
+        "total_item_quantity": record.total_item_quantity,
+        "total_item_dollars": record.total_item_dollars,
+    }
+
+    try:
+        explanation = ml_models.explain_invoice_flag(payload)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"SHAP explanation failed: {exc}")
+
+    mismatch = abs(record.invoice_dollars - record.total_item_dollars)
+
+    flag = record.predicted_flag if record.predicted_flag is not None else explanation["predicted_flag"]
+    prob = record.risk_probability if record.risk_probability is not None else explanation["risk_probability"]
+
+    return schemas.InvoiceExplanationOut(
+        invoice_id=record.id,
+        vendor_number=record.vendor_number,
+        po_number=record.po_number,
+        invoice_date=record.invoice_date,
+        invoice_dollars=record.invoice_dollars,
+        total_item_dollars=record.total_item_dollars,
+        dollar_mismatch=round(mismatch, 2),
+        predicted_flag=flag,
+        risk_label="FLAGGED" if flag == 1 else "CLEARED",
+        risk_probability=round(prob, 4),
+        base_risk=explanation["base_risk"],
+        summary=explanation["summary"],
+        features=[schemas.FeatureAttribution(**f) for f in explanation["features"]],
+    )
+
+
+@router.post("/explain", response_model=schemas.InvoiceExplanationOut)
+def explain_invoice_payload(payload: schemas.InvoiceInput):
+    """
+    Ad-hoc SHAP explanation for an unpersisted invoice payload.
+    """
+    ml_payload = {
+        "invoice_quantity": payload.invoice_quantity,
+        "invoice_dollars": payload.invoice_dollars,
+        "Freight": payload.Freight,
+        "total_item_quantity": payload.total_item_quantity,
+        "total_item_dollars": payload.total_item_dollars,
+    }
+
+    try:
+        explanation = ml_models.explain_invoice_flag(ml_payload)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"SHAP explanation failed: {exc}")
+
+    mismatch = abs(payload.invoice_dollars - payload.total_item_dollars)
+
+    return schemas.InvoiceExplanationOut(
+        invoice_id=None,
+        vendor_number=payload.vendor_number,
+        po_number=payload.po_number,
+        invoice_date=payload.invoice_date,
+        invoice_dollars=payload.invoice_dollars,
+        total_item_dollars=payload.total_item_dollars,
+        dollar_mismatch=round(mismatch, 2),
+        predicted_flag=explanation["predicted_flag"],
+        risk_label=explanation["risk_label"],
+        risk_probability=explanation["risk_probability"],
+        base_risk=explanation["base_risk"],
+        summary=explanation["summary"],
+        features=[schemas.FeatureAttribution(**f) for f in explanation["features"]],
+    )
+
 
 
 @router.post("/batch-upload", response_model=schemas.BatchUploadResponse)

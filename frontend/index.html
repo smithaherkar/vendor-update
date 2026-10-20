@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Vendor Intelligence — Manifest Desk</title>
+<title>Vendor Intelligence &amp; Performance System</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2.5" />
+<link rel="stylesheet" href="css/style.css?v=2.6" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.1/marked.min.js"></script>
 </head>
@@ -18,11 +18,7 @@
     <div class="topbar__mark">VI</div>
     <div class="topbar__title">
       <h1>Vendor Intelligence</h1>
-      <p class="eyebrow">Manifest Desk &mdash; Invoice, Freight &amp; Batch AI Workspace</p>
-    </div>
-    <div class="topbar__status" id="apiStatus">
-      <span class="dot" id="apiDot"></span>
-      <span id="apiStatusText">Checking connection…</span>
+      <p class="eyebrow">Enterprise Risk, Freight &amp; Discrepancy Analytics</p>
     </div>
   </header>
 
@@ -86,8 +82,7 @@
       <section class="page-view active" id="view-dashboard">
         <div class="ledger-card ledger-card--full" style="margin-bottom: 24px;">
           <div class="ledger-card__head">
-            <span class="ledger-card__index">SYSTEM OVERVIEW</span>
-            <h2>Desk Control Center</h2>
+            <h2>Operations Dashboard</h2>
             <p class="ledger-card__desc">Real-time statistics for invoice risk predictions, freight cost projections, and CSV batch processing pipelines.</p>
           </div>
 
@@ -141,7 +136,6 @@
       <section class="page-view" id="view-invoice-manual">
         <div class="ledger-card">
           <div class="ledger-card__head">
-            <span class="ledger-card__index">MANIFEST 01 &middot; MANUAL</span>
             <h2>Single Invoice Risk Check</h2>
             <p class="ledger-card__desc">Enter invoice and matching purchase-order figures to evaluate fraud &amp; discrepancy risk.</p>
           </div>
@@ -182,7 +176,7 @@
             </label>
 
             <button type="submit" class="btn btn--primary">
-              <span>Stamp this invoice</span>
+              <span>Evaluate Invoice Risk</span>
             </button>
           </form>
 
@@ -194,7 +188,6 @@
       <section class="page-view" id="view-invoice-batch">
         <div class="ledger-card ledger-card--full">
           <div class="ledger-card__head">
-            <span class="ledger-card__index">BATCH INGESTION</span>
             <h2>Invoice Risk Batch Upload</h2>
             <p class="ledger-card__desc">Upload a CSV file containing multiple invoice records. Large files (>500 rows) process asynchronously in the background.</p>
           </div>
@@ -229,7 +222,6 @@
       <section class="page-view" id="view-freight-manual">
         <div class="ledger-card">
           <div class="ledger-card__head">
-            <span class="ledger-card__index">MANIFEST 02 &middot; MANUAL</span>
             <h2>Freight Cost Estimate</h2>
             <p class="ledger-card__desc">Enter invoice dollar amount to project expected freight cost from historical model regressions.</p>
           </div>
@@ -266,7 +258,6 @@
       <section class="page-view" id="view-freight-batch">
         <div class="ledger-card ledger-card--full">
           <div class="ledger-card__head">
-            <span class="ledger-card__index">BATCH INGESTION</span>
             <h2>Freight Estimation Batch Upload</h2>
             <p class="ledger-card__desc">Upload a CSV file with invoice dollar amounts to compute bulk freight estimates.</p>
           </div>
@@ -303,7 +294,7 @@
           <div class="history__head">
             <h2>Unified Predictions History</h2>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-              <button id="refreshHistory" class="btn btn--ghost btn--sm">Refresh Ledger</button>
+              <button id="refreshHistory" class="btn btn--ghost btn--sm">Refresh Records</button>
               <button id="exportInvoiceCSV" class="btn btn--ghost btn--sm" title="Download invoice history as CSV">⬇️ Export Invoices CSV</button>
               <button id="exportFreightCSV" class="btn btn--ghost btn--sm" title="Download freight history as CSV">⬇️ Export Freight CSV</button>
             </div>
@@ -340,7 +331,7 @@
               <table class="ledger-table" id="invoiceHistoryTable">
                 <thead>
                   <tr>
-                    <th>#</th><th>Vendor / PO / Date</th><th>Invoice $</th><th>Freight $</th><th>Source</th><th>Verdict</th><th>Confidence</th><th>Logged</th>
+                    <th>#</th><th>Vendor / PO / Date</th><th>Invoice $</th><th>Freight $</th><th>Source</th><th>Verdict</th><th>Confidence</th><th>Logged</th><th>Audit &amp; Explain</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -368,7 +359,6 @@
       <section class="page-view" id="view-batches">
         <div class="ledger-card ledger-card--full">
           <div class="ledger-card__head">
-            <span class="ledger-card__index">BATCH REGISTRY</span>
             <h2>CSV Upload Batches</h2>
             <p class="ledger-card__desc">Review execution history, success rates, duplicate counts, and detailed row errors for all CSV batch uploads.</p>
           </div>
@@ -399,9 +389,8 @@
       <section class="page-view" id="view-assistant">
         <div class="ledger-card ledger-card--full" id="assistantCard">
           <div class="ledger-card__head">
-            <span class="ledger-card__index">INTELLIGENCE AGENT</span>
             <h2>Vendor AI Assistant</h2>
-            <p class="ledger-card__desc">Query deterministic SQL analytics across vendors, risk rates, spend rankings, freight metrics, and data confidence.</p>
+            <p class="ledger-card__desc">Ask questions regarding vendor flag rates, total spend, freight costs, and historical invoice risk anomalies.</p>
           </div>
 
           <form id="assistantForm" class="ledger-form assistant-form">
@@ -423,6 +412,7 @@
               <button type="button" class="chip" data-prompt="Average invoice dollar amount by vendor">📊 Avg Invoice Value</button>
               <button type="button" class="chip" data-prompt="Average freight percentage by vendor">📦 Freight Ratio</button>
               <button type="button" class="chip" data-prompt="What is the largest single invoice mismatch on record?">❗ Largest Mismatch</button>
+              <button type="button" class="chip" data-prompt="Why was invoice #45 flagged?">🔍 Explain Invoice #45</button>
             </div>
 
             <!-- Query History -->
@@ -469,10 +459,28 @@
     </div>
   </div>
 
+  <!-- INVOICE SHAP EXPLANATION AUDIT MODAL -->
+  <div class="modal-backdrop" id="invoiceExplainModal" hidden>
+    <div class="modal-dialog" style="max-width: 720px;">
+      <div class="modal-head">
+        <div>
+          <span class="modal-badge">EXPLAINABLE AI &middot; SHAP RISK AUDIT</span>
+          <h2 id="invoiceExplainModalTitle">Invoice Risk Attribution</h2>
+        </div>
+        <button type="button" class="modal-close" id="closeInvoiceExplainModal" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body" id="invoiceExplainModalBody">
+        <div style="text-align:center; padding:32px; color:var(--muted-text); font-family:var(--font-mono);">
+          ⚡ Loading SHAP attribution…
+        </div>
+      </div>
+    </div>
+  </div>
+
   <footer class="foot">
-    <p>Vendor Intelligence &middot; internal desk workspace &middot; models retrained by the data team</p>
+    <p>&copy; 2026 Vendor Intelligence &middot; Enterprise Risk &amp; Performance Platform</p>
   </footer>
 
-<script src="js/app.js?v=2.5"></script>
+<script src="js/app.js?v=2.6"></script>
 </body>
 </html>

@@ -59,9 +59,35 @@ class InvoicePredictionOut(BaseModel):
         from_attributes = True
 
 
+class FeatureAttribution(BaseModel):
+    """Detailed attribution of a single feature towards the risk score."""
+    feature: str = Field(..., description="Technical feature column name")
+    label: str = Field(..., description="Human-readable feature label")
+    raw_value: float = Field(..., description="Raw numerical value on the invoice")
+    shap_value: float = Field(..., description="Shapley contribution value towards risk")
+    impact: str = Field(..., description="'INCREASES_RISK' or 'DECREASES_RISK'")
+    impact_pct: float = Field(..., description="Percentage share of total absolute feature impact")
 
 
-# ---------- Freight cost ----------
+class InvoiceExplanationOut(BaseModel):
+    """Full SHAP explainability breakdown for an invoice."""
+    invoice_id: Optional[int] = Field(None, description="Database ID of the invoice, if persisted")
+    vendor_number: Optional[str] = None
+    po_number: Optional[str] = None
+    invoice_date: Optional[str] = None
+    invoice_dollars: Optional[float] = None
+    total_item_dollars: Optional[float] = None
+    dollar_mismatch: Optional[float] = None
+    predicted_flag: int
+    risk_label: str
+    risk_probability: float
+    base_risk: float
+    summary: str
+    features: list[FeatureAttribution]
+
+    class Config:
+        from_attributes = True
+
 
 class FreightInput(BaseModel):
     vendor_number: Optional[str] = Field(None, description="Optional vendor identifier")

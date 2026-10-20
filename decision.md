@@ -237,7 +237,7 @@ Integrated **Google Gemini via `langchain-google-genai`** combined with contextu
 #### 3. Technology & Library Comparison (Why X over Y)
 | Option Considered | Pros | Cons | Reason for Selection / Rejection |
 | :--- | :--- | :--- | :--- |
-| **LangChain Google GenAI (`gemini-1.5-pro/flash`) (Chosen)** | High context window (up to 1M+ tokens), fast reasoning, official LangChain integration for prompt templating. | Depends on Google API key availability and network connectivity. | **Selected**: Provides superior reasoning for financial risk analytics and structured JSON outputs. |
+| **LangChain Google GenAI (`gemini-2.0-flash`) (Chosen)** | High context window (up to 1M+ tokens), ultra-low latency, official LangChain integration for prompt templating. | Depends on Google API key availability and network connectivity. | **Selected**: Provides superior reasoning for financial risk analytics and structured JSON outputs with low latency. |
 | **Local LLM (Ollama / Llama.cpp)** | Fully offline, no API key costs. | Requires local GPU hardware, higher memory consumption, slower inference. | **Rejected**: Target deployment environments may lack dedicated GPU accelerators. |
 | **OpenAI GPT-4o** | High reasoning capability. | Higher token pricing and rate limits compared to Gemini tier for bulk invoice analytics. | **Rejected**: Google GenAI offers higher free tier limits and context capabilities. |
 
